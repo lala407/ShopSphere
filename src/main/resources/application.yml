@@ -1,0 +1,50 @@
+# ============================================================
+# AI 辅助说明：本文件由 AI 辅助生成/修改
+# 生成内容：application.yml 基础配置
+# 人工修改：数据库密码需学员自行填写（不要提交真实密码）
+# 审查状态：待人工审查
+# ============================================================
+
+server:
+  port: 8080
+
+spring:
+  # Thymeleaf：关闭缓存，改模板立即生效（开发时）
+  thymeleaf:
+    cache: false
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+
+  # 数据源 —— 学员请把 password 改成自己本机 MySQL 的 root 密码
+  datasource:
+    # [手写] characterEncoding 必须是 Java 认识的名字（UTF-8），不能写 MySQL 术语 utf8mb4
+    #        MySQL 端字符集由后面的 connectionCollation 保证 utf8mb4_general_ci
+    # [手写] createDatabaseIfNotExist=true 让 MySQL 驱动自动建库，省得手动执行 CREATE DATABASE
+    #        connectionCollation 保证新库用 utf8mb4_general_ci 字符集
+    url: jdbc:mysql://localhost:3306/shopsphere?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&connectionCollation=utf8mb4_general_ci&createDatabaseIfNotExist=true
+    username: root
+    password: ${DB_PASSWORD:root}   # 优先读环境变量 DB_PASSWORD，没有则默认 root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # JPA / Hibernate
+  jpa:
+    hibernate:
+      ddl-auto: update               # 自动建表/更新表结构（开发方便）
+    show-sql: true                    # 控制台打印 SQL，便于学习
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+    open-in-view: false
+
+  # 数据库初始化
+  sql:
+    init:
+      mode: always                    # 启动时自动执行 resources/db/ 下的 SQL
+
+# 日志
+logging:
+  level:
+    com.shopsphere: DEBUG
+    org.hibernate.SQL: DEBUG
