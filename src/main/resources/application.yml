@@ -37,6 +37,8 @@ spring:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
     open-in-view: false
+    # [AI辅助] data.sql 必须在 Hibernate 建表【之后】执行，否则 INSERT 时表还不存在
+    defer-datasource-initialization: true
 
   # 数据库初始化
   sql:

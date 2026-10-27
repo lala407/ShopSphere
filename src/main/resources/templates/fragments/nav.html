@@ -1,0 +1,43 @@
+<!-- ============================================================
+AI 辅助说明：本文件由 AI 辅助生成/修改
+生成内容：nav.html —— 顶部导航条（登录态切换，计划书 3.2 AI 范围）
+人工修改：无
+审查状态：待人工审查
+============================================================ -->
+
+<!--
+  顶部导航片段，含登录态切换：
+
+  - 未登录：session 里没有 userId → 显示 [登录] [注册]
+  - 已登录：显示 [你好，xxx] [注销]
+
+  th:if="${session.userId} != null"：
+  Thymeleaf 可以直接用 ${session.xxx} 访问 HttpSession 的属性——
+  和后端 session.setAttribute("userId", ...) 一一对应。
+  这就是"登录一次后，每个页面都知道我是谁"的实现原理：
+  数据存在服务器 Session 里，所有请求共享。
+
+  用法：<nav th:replace="~{fragments/nav :: nav}"></nav>
+-->
+<nav th:fragment="nav" xmlns:th="http://www.thymeleaf.org"
+     class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+    <div class="container">
+        <!-- 站点 Logo / 首页入口 -->
+        <a class="navbar-brand fw-bold" href="/">🛒 ShopSphere</a>
+
+        <div class="navbar-nav ms-auto">
+            <!-- 已登录：显示用户名 + 注销 -->
+            <span th:if="${session.userId} != null" class="navbar-text me-3">
+                你好，<strong th:text="${session.username}">用户名</strong>
+            </span>
+            <a th:if="${session.userId} != null" class="nav-link"
+               href="/logout">注销</a>
+
+            <!-- 未登录：显示 登录 / 注册 -->
+            <a th:if="${session.userId} == null" class="nav-link"
+               href="/login">登录</a>
+            <a th:if="${session.userId} == null" class="nav-link"
+               href="/register">注册</a>
+        </div>
+    </div>
+</nav>
