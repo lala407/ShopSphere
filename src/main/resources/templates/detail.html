@@ -1,0 +1,74 @@
+<!-- ============================================================
+AI 辅助说明：本文件由 AI 辅助生成/修改
+生成内容：detail.html 骨架（页面框架 + 片段引用，详情布局为 TODO）
+人工修改：详情内容由本人手写
+审查状态：待人工审查
+============================================================ -->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('商品详情 - ShopSphere')}"></head>
+<body>
+<nav th:replace="~{fragments/nav :: nav}"></nav>
+
+<main class="container py-4">
+
+    <!-- ==================== [手写] TODO：商品详情布局 ====================
+         左图右信息的两栏布局（Bootstrap row/col）：
+
+         <div class="row">
+             <!-- 左栏：商品图 -->
+    <div class="col-md-5">
+        <img th:src="${product.imageUrl}" class="img-fluid rounded" alt="商品图">
+    </div>
+    <!-- 右栏：信息 -->
+    <div class="col-md-7">
+        <h3 th:text="${product.name}">商品名</h3>
+        <p class="text-danger fs-4 fw-bold">¥<span th:text="${product.price}">0</span></p>
+        <p class="text-muted">
+            库存 <span th:text="${product.stock}">0</span> 件 ·
+            已售 <span th:text="${product.sales}">0</span> 件
+        </p>
+        <p th:text="${product.description}">商品描述</p>
+        <hr>
+        <!-- 加入购物车：Day 3 只做跳转占位，Day 4 才实现真正加入 -->
+        <a href="/cart" class="btn btn-primary btn-lg">加入购物车</a>
+        <a href="/" class="btn btn-outline-secondary btn-lg">返回列表</a>
+    </div>
+    </div>
+    ============================================================ -->
+
+    <!-- [手写] 商品详情布局：左图右信息 -->
+    <div class="row">
+        <!-- 左栏：商品图 -->
+        <div class="col-md-5">
+            <img th:src="${product.imageUrl}" class="img-fluid rounded" alt="商品图">
+        </div>
+
+        <!-- 右栏：信息 -->
+        <div class="col-md-7">
+            <h3 th:text="${product.name}">商品名</h3>
+
+            <p class="text-danger fs-4 fw-bold">
+                ¥<span th:text="${product.price}">0</span>
+            </p>
+
+            <p class="text-muted">
+                库存 <span th:text="${product.stock}">0</span> 件 ·
+                已售 <span th:text="${product.sales}">0</span> 件
+            </p>
+
+            <p th:text="${product.description}">商品描述</p>
+
+            <hr>
+
+            <!-- 加入购物车：Day 3 只做跳转占位，Day 4 才实现真正加入 -->
+            <a href="/cart" class="btn btn-primary btn-lg">加入购物车</a>
+            <a href="/" class="btn btn-outline-secondary btn-lg">返回列表</a>
+        </div>
+    </div>
+
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

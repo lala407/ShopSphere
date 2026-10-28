@@ -1,0 +1,76 @@
+<!-- ============================================================
+AI 辅助说明：本文件由 AI 辅助生成/修改
+生成内容：list.html 骨架（页面框架 + 片段引用，商品网格与筛选栏为 TODO）
+人工修改：搜索表单、分类栏、商品网格由本人手写
+审查状态：待人工审查
+============================================================ -->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('首页 - ShopSphere')}"></head>
+<body>
+<nav th:replace="~{fragments/nav :: nav}"></nav>
+
+<main class="container">
+
+    <!-- ==================== 搜索表单 ====================
+         GET 表单：搜索是"查询"，条件进 URL，可收藏可分享 -->
+    <form method="get" action="/" class="row g-2 mb-3">
+        <div class="col-auto">
+            <input type="text" class="form-control" name="kw"
+                   placeholder="搜索商品名..."
+                   th:value="${kw}">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">搜索</button>
+        </div>
+    </form>
+
+    <!-- ==================== 分类筛选栏 ====================
+         "全部" + 每个分类一个链接，点击带 cid 刷新本页
+         链接里带 kw，是为了切分类时不丢搜索条件 -->
+    <div class="mb-3">
+        <a href="/" class="btn btn-sm"
+           th:classappend="${cid == null} ? 'btn-primary' : 'btn-outline-primary'">全部</a>
+        <!-- [AI修复] cid 是 Long，== 在缓存范围外会判不等，改用 equals（cid==null 时短路不算） -->
+        <a th:each="c : ${categories}"
+           th:href="@{/(cid=${c.id}, kw=${kw})}"
+           th:text="${c.name}"
+           class="btn btn-sm"
+           th:classappend="${cid != null && cid.equals(c.id)} ? 'btn-primary' : 'btn-outline-primary'">分类</a>
+    </div>
+
+    <!-- ==================== 商品网格 ====================
+         一行 4 张卡片，遍历 pageData.content -->
+    <div class="row g-3">
+        <div class="col-md-3" th:each="p : ${pageData.content}">
+            <div class="card h-100">
+                <img th:src="${p.imageUrl}" class="card-img-top" alt="商品图">
+                <div class="card-body">
+                    <h6 class="card-title" th:text="${p.name}">商品名</h6>
+                    <p class="text-danger fw-bold mb-1">
+                        ¥<span th:text="${p.price}">0</span>
+                    </p>
+                    <p class="text-muted mb-2">
+                        <small>已售 <span th:text="${p.sales}">0</span> 件</small>
+                    </p>
+                    <a th:href="@{/product/{id}(id=${p.id})}"
+                       class="btn btn-sm btn-outline-primary">查看详情</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 空态处理 ====================
+         搜索无结果时不能白屏（和上面的商品网格互斥显示） -->
+    <div th:if="${pageData.empty}" class="text-center text-muted py-5">
+        <p>没有找到相关商品，换个关键字试试？</p>
+    </div>
+
+    <!-- 分页组件（AI 实现，参数顺序：pageData, kw, cid） -->
+    <nav th:replace="~{fragments/pagination :: pagination(${pageData}, ${kw}, ${cid})}"></nav>
+
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>
