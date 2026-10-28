@@ -22,8 +22,9 @@ spring:
     #        MySQL 端字符集由后面的 connectionCollation 保证 utf8mb4_general_ci
     # [手写] createDatabaseIfNotExist=true 让 MySQL 驱动自动建库，省得手动执行 CREATE DATABASE
     #        connectionCollation 保证新库用 utf8mb4_general_ci 字符集
-    url: jdbc:mysql://localhost:3306/shopsphere?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&connectionCollation=utf8mb4_general_ci&createDatabaseIfNotExist=true
-    username: root
+    # [AI辅助] ${DB_URL:默认值}：本地开发用 localhost；Docker 容器里通过 -e DB_URL=... 注入
+    url: ${DB_URL:jdbc:mysql://localhost:3306/shopsphere?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&connectionCollation=utf8mb4_general_ci&createDatabaseIfNotExist=true}
+    username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:root}   # 优先读环境变量 DB_PASSWORD，没有则默认 root
     driver-class-name: com.mysql.cj.jdbc.Driver
 

@@ -1,0 +1,53 @@
+<!-- ============================================================
+AI 辅助说明：本文件由 AI 辅助生成/修改
+生成内容：分页条组件（计划书 3.3 分工属 AI——分页组件由 AI 完整实现并讲解）
+人工修改：无
+审查状态：待人工审查
+============================================================ -->
+<!--
+  分页条片段。用法（在列表页里一行引入）：
+    <nav th:replace="~{fragments/pagination :: pagination(${pageData}, ${kw}, ${cid})}"></nav>
+
+  三个参数：
+    pageData —— Controller 放进 model 的 Page 对象
+    kw / cid —— 当前筛选条件，翻页时必须带在 URL 里，否则翻页丢条件
+
+  三个关键语法点：
+  1. @{/(page=${i}, kw=${kw}, cid=${cid})}
+     Thymeleaf 自动把参数拼成 ?page=0&kw=xx&cid=1；参数为 null 时自动省略
+  2. #numbers.sequence(0, totalPages-1)  生成 [0,1,2...] 页码序列（页码 0 基）
+  3. th:classappend 按条件追加 Bootstrap 的 disabled / active 样式
+     pageData.first=是否第一页（禁止"上一页"），pageData.last=是否最后一页
+-->
+<nav th:fragment="pagination(pageData, kw, cid)"
+     th:if="${pageData.totalPages > 1}"
+     aria-label="商品分页">
+    <ul class="pagination justify-content-center mt-4">
+
+        <!-- 上一页：第一页时禁用 -->
+        <li class="page-item" th:classappend="${pageData.first} ? 'disabled'">
+            <a class="page-link"
+               th:href="@{/(page=${pageData.number - 1}, kw=${kw}, cid=${cid})}">上一页</a>
+        </li>
+
+        <!-- 页码：0 基存储，显示时 +1；当前页高亮 -->
+        <li class="page-item"
+            th:each="i : ${#numbers.sequence(0, pageData.totalPages - 1)}"
+            th:classappend="${i == pageData.number} ? 'active'">
+            <a class="page-link"
+               th:href="@{/(page=${i}, kw=${kw}, cid=${cid})}"
+               th:text="${i + 1}">1</a>
+        </li>
+
+        <!-- 下一页：最后一页时禁用 -->
+        <li class="page-item" th:classappend="${pageData.last} ? 'disabled'">
+            <a class="page-link"
+               th:href="@{/(page=${pageData.number + 1}, kw=${kw}, cid=${cid})}">下一页</a>
+        </li>
+
+    </ul>
+    <p class="text-center text-muted">
+        <small>第 <span th:text="${pageData.number + 1}">1</span> / <span th:text="${pageData.totalPages}">1</span> 页，
+            共 <span th:text="${pageData.totalElements}">0</span> 件商品</small>
+    </p>
+</nav>

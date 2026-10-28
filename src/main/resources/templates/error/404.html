@@ -1,0 +1,27 @@
+<!-- ============================================================
+AI 辅助说明：本文件由 AI 辅助生成/修改
+生成内容：友好 404 页（Spring Boot 约定：templates/error/404.html 自动生效）
+人工修改：无
+审查状态：待人工审查
+============================================================ -->
+<!--
+  为什么放在 error/ 目录下不用配 Controller？
+  Spring Boot 的 BasicErrorController 约定：HTTP 状态码对应的
+  templates/error/404.html、500.html 会被自动渲染。
+  商品不存在时 Controller 抛 ResponseStatusException(NOT_FOUND) 就会来到这里。
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('页面不存在 - ShopSphere')}"></head>
+<body>
+<nav th:replace="~{fragments/nav :: nav}"></nav>
+
+<main class="container text-center py-5">
+    <h1 class="display-1 fw-bold text-muted">404</h1>
+    <p class="lead mb-4">抱歉，你访问的商品或页面不存在</p>
+    <a href="/" class="btn btn-primary">返回首页逛逛</a>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>
