@@ -1,0 +1,96 @@
+<!-- ============================================================
+AI 辅助说明：本文件由 AI 辅助生成/修改
+生成内容：cart.html 骨架（页面结构 + 表单范式，表格行与合计为 TODO）
+人工修改：购物车表格行、小计、合计、表格空态判断由本人手写
+审查状态：待人工审查
+============================================================ -->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('购物车 - ShopSphere')}"></head>
+<body>
+<nav th:replace="~{fragments/nav :: nav}"></nav>
+
+<main class="container">
+
+    <h3 class="mb-4">我的购物车</h3>
+
+    <!-- 错误提示：加购失败（如下架）时，Controller 用 addFlashAttribute 暂存过来的 -->
+    <div th:if="${error}" class="alert alert-warning" th:text="${error}"></div>
+
+
+    <!-- [手写] 空态：购物车为空时显示提示 + 去逛逛按钮 -->
+    <div th:if="${items.isEmpty()}" class="text-center text-muted py-5">
+        <p class="fs-5">购物车还是空的</p>
+        <a href="/" class="btn btn-primary">去逛逛</a>
+    </div>
+
+
+    <!-- 购物车表格（items 为空时整块隐藏） -->
+    <div th:if="${items != null and !items.isEmpty()}">
+
+        <table class="table align-middle">
+            <thead class="table-light">
+            <tr>
+                <th>商品</th>
+                <th class="text-end">单价</th>
+                <th class="text-center" style="width: 180px">数量</th>
+                <th class="text-end">小计</th>
+                <th class="text-center" style="width: 90px">操作</th>
+            </tr>
+            </thead>
+            <tbody>
+
+            <!-- [手写] 商品行：遍历 items，每行商品 / 单价 / 数量 / 小计 / 删除 -->
+            <tr th:each="item : ${items}">
+                <td>
+                    <div class="d-flex align-items-center">
+                        <img th:src="${item.product.imageUrl}" width="60" height="45"
+                             class="rounded me-2" alt="商品图">
+                        <a th:href="@{/product/{id}(id=${item.product.id})}"
+                           th:text="${item.product.name}">商品名</a>
+                    </div>
+                </td>
+                <td class="text-end">¥<span th:text="${item.product.price}">0</span></td>
+                <td>
+                    <!-- 改数量：POST 表单，隐藏 cartItemId -->
+                    <form method="post" action="/cart/update" class="d-flex justify-content-center">
+                        <input type="hidden" name="cartItemId" th:value="${item.id}">
+                        <input type="number" name="quantity" class="form-control form-control-sm me-1"
+                               style="width: 70px" th:value="${item.quantity}" min="0">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">更新</button>
+                    </form>
+                </td>
+                <td class="text-end">
+                    ¥<span th:text="${item.product.price * item.quantity}">0</span>
+                </td>
+                <td class="text-center">
+                    <form method="post" action="/cart/remove" class="d-inline">
+                        <input type="hidden" name="cartItemId" th:value="${item.id}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+
+        
+        <!-- [手写] 合计 + 底部操作区：左清空，右合计与结算 -->
+        <div class="d-flex justify-content-between align-items-center border-top pt-3">
+            <form method="post" action="/cart/clear"
+                  onsubmit="return confirm('确定清空购物车？');">
+                <button type="submit" class="btn btn-outline-secondary">清空购物车</button>
+            </form>
+            <div>
+                <span class="text-muted me-2">合计：</span>
+                <span class="text-danger fs-4 fw-bold">¥<span th:text="${totalAmount}">0</span></span>
+                <button class="btn btn-success btn-lg ms-3" disabled>去结算（Day 5）</button>
+            </div>
+        </div>
+
+    </div>
+
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

@@ -12,6 +12,9 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
 
 <main class="container py-4">
 
+    <!-- [AI辅助 Day4] 加购失败（商品已下架/不存在）时由 CartController 用 flash 带回的提示 -->
+    <div th:if="${error}" class="alert alert-warning" th:text="${error}"></div>
+
     <!-- ==================== [手写] TODO：商品详情布局 ====================
          左图右信息的两栏布局（Bootstrap row/col）：
 
@@ -61,8 +64,14 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
 
             <hr>
 
-            <!-- 加入购物车：Day 3 只做跳转占位，Day 4 才实现真正加入 -->
-            <a href="/cart" class="btn btn-primary btn-lg">加入购物车</a>
+            <!-- 加入购物车（Day 4）：必须是 POST（会改数据），不能再用 GET 链接 -->
+            <!-- [AI辅助] 表单骨架由 AI 提供，请读懂：productId 用 hidden 传，
+                 quantity 固定 1（详情页暂不做数量选择器） -->
+            <form method="post" action="/cart/add" class="d-inline">
+                <input type="hidden" name="productId" th:value="${product.id}">
+                <input type="hidden" name="quantity" value="1">
+                <button type="submit" class="btn btn-primary btn-lg">加入购物车</button>
+            </form>
             <a href="/" class="btn btn-outline-secondary btn-lg">返回列表</a>
         </div>
     </div>
