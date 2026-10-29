@@ -26,6 +26,14 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
         <a class="navbar-brand fw-bold" href="/">🛒 ShopSphere</a>
 
         <div class="navbar-nav ms-auto">
+            <!-- [AI辅助 Day4] 购物车入口 + 角标：cartCount 由 CartCountAdvice 全局注入 -->
+            <a th:if="${session.userId} != null" class="nav-link position-relative me-3" href="/cart">
+                购物车
+                <span th:if="${cartCount != null and cartCount > 0}"
+                      class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                      th:text="${cartCount}">0</span>
+            </a>
+
             <!-- 已登录：显示用户名 + 注销 -->
             <span th:if="${session.userId} != null" class="navbar-text me-3">
                 你好，<strong th:text="${session.username}">用户名</strong>
