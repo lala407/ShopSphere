@@ -10,6 +10,7 @@ import com.shopsphere.entity.Product;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -47,4 +48,37 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Page<Product> searchOnSale(@Param("cid") Long cid,
                                @Param("kw") String kw,
                                Pageable pageable);
+
+    /**
+     * [AI完整实现 Day5] 条件更新扣库存 —— 防超卖的核心。
+     *
+     * <p>SQL 语义：UPDATE product SET stock = stock - :qty
+     *             WHERE id = :pid AND stock >= :qty
+     *
+     * <p>为什么不能"先 findById 查库存，判断够不够，再 setStock(stock-qty)"？
+     * 两个并发请求可能同时查到 stock=1、都判断"够"，然后都减 1 → 库存变成 -1（超卖）。
+     * 把"判断"和"扣减"合并进同一条 UPDATE，由数据库的行锁保证原子性：
+     * 只有 stock >= qty 时才会更新成功，否则**受影响行数为 0**。
+     *
+     * <p>返回值 int = 受影响行数。调用方判断：
+     * <pre>if (affected == 0) throw new IllegalArgumentException("库存不足");</pre>
+     *
+     * <p>⚠️ 两个容易忽略的注解属性：
+     * <ul>
+     *   <li>flushAutomatically = true：执行本 UPDATE 前先把待写入的 INSERT 刷进库，
+     *       否则 JPA 可能先执行 UPDATE 后写订单，导致库存已扣但订单没落库。</li>
+     *   <li>clearAutomatically = true：UPDATE 绕过了一级缓存（持久化上下文），
+     *       执行后清空缓存，保证后续读到的 stock 是新值，而不是缓存里的旧快照。</li>
+     * </ul>
+     *
+     * <p>⚠️ @Modifying 查询必须在事务中执行（调用方 OrderService.createOrder 有 @Transactional）。
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            UPDATE Product p
+               SET p.stock = p.stock - :qty
+             WHERE p.id = :pid
+               AND p.stock >= :qty
+            """)
+    int deductStock(@Param("pid") Long productId, @Param("qty") int quantity);
 }

@@ -39,7 +39,8 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new LoginInterceptor())
-                .addPathPatterns("/cart/**", "/order/**", "/checkout/**");
+                // [AI辅助 Day5] 追加 /orders/**：我的订单（列表/详情/付款）也必须登录
+                .addPathPatterns("/cart/**", "/order/**", "/checkout/**", "/orders/**");
     }
 
     /**
