@@ -1,0 +1,82 @@
+<!-- ============================================================
+AI 辅助说明：本文件由 AI 辅助生成/修改
+生成内容：order-detail.html 骨架（订单详情，明细分与操作区为 TODO）
+人工修改：明细表行、操作按钮区由本人手写
+审查状态：待人工审查
+============================================================ -->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('订单详情 - ShopSphere')}"></head>
+<body>
+<nav th:replace="~{fragments/nav :: nav}"></nav>
+
+<main class="container">
+
+    <!-- 付款失败（重复付款/状态不对）时 flash 回来的提示 -->
+    <div th:if="${error}" class="alert alert-warning" th:text="${error}"></div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0">订单详情</h3>
+        <a href="/orders" class="btn btn-outline-secondary btn-sm">返回订单列表</a>
+    </div>
+
+
+         <div class="card mb-4">
+             <div class="card-body">
+                 <div class="row">
+                     <div class="col-md-6">
+                         <p class="mb-1">订单号：<strong th:text="${order.orderNo}">单号</strong></p>
+                         <p class="mb-1">下单时间：<span th:text="${#temporals.format(order.createdAt, 'yyyy-MM-dd HH:mm:ss')}">时间</span></p>
+                         <p class="mb-1">状态：
+                             <span class="badge bg-info" th:text="${order.status.label}">状态</span>
+                         </p>
+                     </div>
+                     <div class="col-md-6">
+                         <p class="mb-1">收货人：<span th:text="${order.receiverName}">姓名</span></p>
+                         <p class="mb-1">电话：<span th:text="${order.receiverPhone}">电话</span></p>
+                         <p class="mb-1">地址：<span th:text="${order.receiverAddress}">地址</span></p>
+                         <p class="mb-1" th:if="${order.remark != null}">备注：<span th:text="${order.remark}">备注</span></p>
+                     </div>
+                 </div>
+             </div>
+         </div>
+
+         <table class="table">
+             <thead class="table-light">
+             <tr>
+                 <th>商品</th>
+                 <th class="text-end">下单时单价</th>
+                 <th class="text-center">数量</th>
+                 <th class="text-end">小计</th>
+             </tr>
+             </thead>
+             <tbody>
+             <tr th:each="it : ${items}">
+                 <td th:text="${it.productName}">商品名</td>
+                 <td class="text-end">¥<span th:text="${it.productPrice}">0</span></td>
+                 <td class="text-center" th:text="${it.quantity}">0</td>
+                 <td class="text-end">¥<span th:text="${it.subtotal}">0</span></td>
+             </tr>
+             </tbody>
+         </table>
+
+
+         <div class="d-flex justify-content-between align-items-center border-top pt-3">
+             <span class="text-muted">共 <span th:text="${items.size()}">0</span> 件商品</span>
+             <div>
+                 <span class="text-muted me-2">订单金额：</span>
+                 <span class="text-danger fs-4 fw-bold">¥<span th:text="${order.totalAmount}">0</span></span>
+
+
+                 <form th:if="${order.status.name() == 'CREATED'}" method="post"
+                       th:action="@{/orders/{id}/pay(id=${order.id})}" class="d-inline ms-3">
+                     <button type="submit" class="btn btn-success btn-lg">模拟付款</button>
+                 </form>
+             </div>
+         </div>
+
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

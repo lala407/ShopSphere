@@ -1,0 +1,90 @@
+<!-- ============================================================
+AI 辅助说明：本文件由 AI 辅助生成/修改
+生成内容：checkout.html 骨架（页面结构 + 表单字段范式，商品清单为 TODO）
+人工修改：收货表单字段、商品清单行由本人手写
+审查状态：待人工审查
+============================================================ -->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('结算 - ShopSphere')}"></head>
+<body>
+<nav th:replace="~{fragments/nav :: nav}"></nav>
+
+<main class="container">
+
+    <h3 class="mb-4">确认订单</h3>
+
+    <!-- 下单失败（库存不足/商品下架/收货信息不合规）时 Controller flash 回来的提示 -->
+    <div th:if="${error}" class="alert alert-warning" th:text="${error}"></div>
+
+    <div class="row">
+
+        <!-- ==================== 左侧：收货表单 ==================== -->
+        <div class="col-md-7">
+            <div class="card mb-3">
+                <div class="card-header">收货信息</div>
+                <div class="card-body">
+
+                    <!-- 整个表单包住"收货信息 + 商品清单 + 提交按钮"，
+                         提交到 POST /order/create -->
+                    <form method="post" action="/order/create">
+
+
+
+                           <input type="text" class="form-control" name="receiverName" required maxlength="50">
+                            <input type="text" class="form-control" name="receiverPhone" required
+                                        pattern="1[0-9]{10}" title="请输入 11 位手机号">
+                            <textarea class="form-control" name="receiverAddress" rows="2" required maxlength="255"></textarea>
+                             <input type="text" class="form-control" name="remark" maxlength="255">
+
+
+                             <h5 class="mt-4 mb-3">商品清单</h5>
+                             <ul class="list-group mb-3">
+                                 <li class="list-group-item d-flex justify-content-between"
+                                     th:each="item : ${items}">
+                                     <span>
+                                         <span th:text="${item.product.name}">商品名</span>
+                                         <small class="text-muted" th:text="' × ' + ${item.quantity}"> × 1</small>
+                                     </span>
+                                     <span>¥<span th:text="${item.product.price * item.quantity}">0</span></span>
+                                 </li>
+                             </ul>
+                             <div class="d-flex justify-content-end align-items-center mb-3">
+                                 <span class="text-muted me-2">合计：</span>
+                                 <span class="text-danger fs-4 fw-bold">¥<span th:text="${totalAmount}">0</span></span>
+                             </div>
+
+
+                             <div class="d-flex justify-content-between">
+                                 <a href="/cart" class="btn btn-outline-secondary">返回购物车</a>
+                                 <button type="submit" class="btn btn-primary btn-lg">提交订单</button>
+                             </div>
+
+
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧提示区（AI 提供，静态） -->
+        <div class="col-md-5">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6 class="card-title">下单说明</h6>
+                    <ul class="small text-muted mb-0">
+                        <li>提交后生成订单，状态为「待付款」</li>
+                        <li>库存会在提交瞬间扣减，库存不足会整单失败</li>
+                        <li>订单明细保存下单时的商品名与单价（价格快照）</li>
+                        <li>本系统为模拟支付，不接入真实支付渠道</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>
