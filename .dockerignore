@@ -1,0 +1,18 @@
+# AI 辅助说明：本文件由 AI 辅助生成/修改
+# 生成内容：Docker 构建上下文排除清单 —— 减小上下文体积、避免把本地构建产物/密钥打进镜像
+# 人工修改：无
+# 审查状态：待人工审查
+
+target/
+.git/
+.gitignore
+.idea/
+.vscode/
+*.iml
+*.log
+logs/
+.env
+.env.local
+docs/
+*.md
+!README.md
