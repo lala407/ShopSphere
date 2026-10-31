@@ -1,0 +1,73 @@
+<!-- ============================================================
+AI 辅助说明：本文件由 AI 辅助生成/修改
+生成内容：admin/stats.html —— 后台统计报表（复杂后台页面，计划书 3.6 AI 范围）
+人工修改：无
+审查状态：待人工审查
+============================================================ -->
+<!--
+  依赖的 model（AdminStatsController.stats 提供）：
+    orderCount  —— 订单总数
+    paidCount   —— 已付款订单数
+    totalSales  —— 总销售额（BigDecimal）
+    hotProducts —— List<HotProductStat>（接口投影：productId / productName / totalQty）
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('统计报表 - 后台')}"></head>
+<body>
+<nav th:replace="~{fragments/nav :: nav}"></nav>
+
+<main class="container">
+    <ul class="nav nav-pills mb-4">
+        <li class="nav-item"><a class="nav-link" href="/admin/product">商品管理</a></li>
+        <li class="nav-item"><a class="nav-link" href="/admin/order">订单管理</a></li>
+        <li class="nav-item"><a class="nav-link active" href="/admin/stats">统计报表</a></li>
+    </ul>
+
+    <h4 class="mb-3">统计报表</h4>
+
+    <!-- 三个指标卡：数字大、标题小，一眼看清 -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card card-body text-center shadow-sm">
+                <div class="text-muted">订单总数</div>
+                <div class="display-6 fw-bold" th:text="${orderCount}">0</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card card-body text-center shadow-sm">
+                <div class="text-muted">已付款订单数</div>
+                <div class="display-6 fw-bold text-primary" th:text="${paidCount}">0</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card card-body text-center shadow-sm">
+                <div class="text-muted">总销售额</div>
+                <div class="display-6 fw-bold text-danger" th:text="${'¥' + totalSales}">¥0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 热销 Top5：th:each 的双变量写法 (h, st)，st.index 是循环下标（0 基） -->
+    <h5 class="mb-3">热销商品 Top5 <small class="text-muted">（按已付款订单销量统计）</small></h5>
+    <table class="table table-striped align-middle" style="max-width: 720px;">
+        <thead class="table-light">
+        <tr><th style="width:80px">排名</th><th style="width:100px">商品ID</th><th>商品名</th><th style="width:120px">累计销量</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="h, st : ${hotProducts}">
+            <td th:text="${st.index + 1}">1</td>
+            <td th:text="${h.productId}">1</td>
+            <td th:text="${h.productName}">商品名</td>
+            <td th:text="${h.totalQty}">0</td>
+        </tr>
+        <tr th:if="${hotProducts.empty}">
+            <td colspan="4" class="text-center text-muted py-4">还没有已付款订单，暂无统计数据</td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

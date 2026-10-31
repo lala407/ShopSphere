@@ -1,0 +1,103 @@
+<!-- ============================================================
+AI 辅助说明：本文件由 AI 辅助生成/修改
+生成内容：admin/product-list.html —— 后台商品管理列表（复杂后台页面，计划书 3.6 AI 范围）
+人工修改：无
+审查状态：待人工审查
+============================================================ -->
+<!--
+  依赖的 model（AdminProductController.list 提供）：
+    pageData    —— Page<Product>
+    categoryMap —— Map<Long, String>，分类 id → 分类名
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('商品管理 - 后台')}"></head>
+<body>
+<nav th:replace="~{fragments/nav :: nav}"></nav>
+
+<main class="container">
+    <!-- 后台子导航：当前页高亮（active） -->
+    <ul class="nav nav-pills mb-4">
+        <li class="nav-item"><a class="nav-link active" href="/admin/product">商品管理</a></li>
+        <li class="nav-item"><a class="nav-link" href="/admin/order">订单管理</a></li>
+        <li class="nav-item"><a class="nav-link" href="/admin/stats">统计报表</a></li>
+    </ul>
+
+    <!-- flash 提示：操作成功/失败的反馈 -->
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+    <div th:if="${msg}" class="alert alert-success" th:text="${msg}"></div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">商品管理</h4>
+        <a href="/admin/product/new" class="btn btn-primary">+ 新增商品</a>
+    </div>
+
+    <table class="table table-hover align-middle">
+        <thead class="table-light">
+        <tr>
+            <th>ID</th><th>图片</th><th>名称</th><th>分类</th>
+            <th>价格</th><th>库存</th><th>销量</th><th>状态</th><th>操作</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="p : ${pageData.content}">
+            <td th:text="${p.id}">1</td>
+            <td>
+                <img th:src="${p.imageUrl}" alt="" class="rounded"
+                     style="width:48px;height:48px;object-fit:cover">
+            </td>
+            <td th:text="${p.name}">商品名</td>
+            <!-- Map 取值：categoryMap[p.categoryId]，把外键 id 翻译成中文名 -->
+            <td th:text="${categoryMap[p.categoryId]}">分类</td>
+            <td th:text="${'¥' + p.price}">¥0.00</td>
+            <td th:text="${p.stock}">0</td>
+            <td th:text="${p.sales}">0</td>
+            <td>
+                <span class="badge"
+                      th:classappend="${p.status.name() == 'ON_SALE'} ? 'bg-success' : 'bg-secondary'"
+                      th:text="${p.status.name() == 'ON_SALE'} ? '在售' : '已下架'">状态</span>
+            </td>
+            <td>
+                <a th:href="@{/admin/product/{id}/edit(id=${p.id})}"
+                   class="btn btn-sm btn-outline-primary">编辑</a>
+                <!-- 上下架是"改数据"的操作，必须用 POST 表单，不能用 GET 链接 -->
+                <form th:action="@{/admin/product/{id}/toggle-status(id=${p.id})}"
+                      method="post" class="d-inline">
+                    <button type="submit" class="btn btn-sm"
+                            th:classappend="${p.status.name() == 'ON_SALE'} ? 'btn-outline-danger' : 'btn-outline-success'"
+                            th:text="${p.status.name() == 'ON_SALE'} ? '下架' : '上架'">下架</button>
+                </form>
+            </td>
+        </tr>
+        <tr th:if="${pageData.empty}">
+            <td colspan="9" class="text-center text-muted py-4">还没有商品，点右上角"新增商品"试试</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <!-- 精简分页条：前台 fragments/pagination 写死了首页路径 "/"，后台路径不同，这里内联一个 -->
+    <nav th:if="${pageData.totalPages > 1}" aria-label="商品分页">
+        <ul class="pagination justify-content-center mt-3">
+            <li class="page-item" th:classappend="${pageData.first} ? 'disabled'">
+                <a class="page-link" th:href="@{/admin/product(page=${pageData.number - 1})}">上一页</a>
+            </li>
+            <li class="page-item"
+                th:each="i : ${#numbers.sequence(0, pageData.totalPages - 1)}"
+                th:classappend="${i == pageData.number} ? 'active'">
+                <a class="page-link" th:href="@{/admin/product(page=${i})}" th:text="${i + 1}">1</a>
+            </li>
+            <li class="page-item" th:classappend="${pageData.last} ? 'disabled'">
+                <a class="page-link" th:href="@{/admin/product(page=${pageData.number + 1})}">下一页</a>
+            </li>
+        </ul>
+        <p class="text-center text-muted">
+            <small>第 <span th:text="${pageData.number + 1}">1</span> /
+                <span th:text="${pageData.totalPages}">1</span> 页，
+                共 <span th:text="${pageData.totalElements}">0</span> 件商品</small>
+        </p>
+    </nav>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

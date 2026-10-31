@@ -34,6 +34,10 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
                       th:text="${cartCount}">0</span>
             </a>
 
+            <!-- [AI辅助 Day6] 管理员专属：后台管理入口（只有 role=ADMIN 才渲染） -->
+            <a th:if="${session.role == 'ADMIN'}" class="nav-link me-3"
+               href="/admin/product">后台管理</a>
+
             <!-- 已登录：显示用户名 + 注销 -->
             <span th:if="${session.userId} != null" class="navbar-text me-3">
                 你好，<strong th:text="${session.username}">用户名</strong>

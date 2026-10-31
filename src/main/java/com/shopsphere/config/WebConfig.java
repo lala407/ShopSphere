@@ -6,6 +6,7 @@
 // ============================================================
 package com.shopsphere.config;
 
+import com.shopsphere.interceptor.AdminInterceptor;
 import com.shopsphere.interceptor.LoginInterceptor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -41,6 +42,11 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(new LoginInterceptor())
                 // [AI辅助 Day5] 追加 /orders/**：我的订单（列表/详情/付款）也必须登录
                 .addPathPatterns("/cart/**", "/order/**", "/checkout/**", "/orders/**");
+
+        // [AI辅助 Day6] 后台拦截器：/admin/** 仅 ADMIN 角色可进（内部已含未登录判断，
+        // 所以不用再把这些路径塞进 LoginInterceptor）
+        registry.addInterceptor(new AdminInterceptor())
+                .addPathPatterns("/admin/**");
     }
 
     /**

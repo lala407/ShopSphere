@@ -81,4 +81,20 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                AND p.stock >= :qty
             """)
     int deductStock(@Param("pid") Long productId, @Param("qty") int quantity);
+
+    /**
+     * [AI完整实现 Day6] 取消订单回补库存：stock = stock + qty。
+     *
+     * <p>和 deductStock 对照看：
+     * 加库存是"无条件更新"——不需要 WHERE stock >= :qty，
+     * 因为把库存加多永远不会失败（不像扣库存有"不够扣"的情况）。
+     * 两个注解属性的作用与 deductStock 完全相同。
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            UPDATE Product p
+               SET p.stock = p.stock + :qty
+             WHERE p.id = :pid
+            """)
+    int restoreStock(@Param("pid") Long productId, @Param("qty") int quantity);
 }

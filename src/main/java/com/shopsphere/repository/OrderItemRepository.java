@@ -6,9 +6,14 @@
 // ============================================================
 package com.shopsphere.repository;
 
+import com.shopsphere.common.OrderStatus;
 import com.shopsphere.entity.OrderItem;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
@@ -16,5 +21,38 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     // ==========================================================
     // [手写] TODO：查某订单的全部明细
     List<OrderItem> findByOrderId(Long orderId);
+
+    /**
+     * [AI完整实现 Day6] 热销商品统计：按"累计销量"降序（配合 Pageable 取前 5 即 Top5）。
+     *
+     * <p>逐句翻译（JPQL → SQL）：
+     * <ul>
+     *   <li>JOIN oi.order o —— 明细关联订单，为了拿到订单状态做过滤</li>
+     *   <li>WHERE o.status IN :statuses —— 只统计"付过款"的订单
+     *       （待付款没成交、已取消要剔除，这两种不算真实销量）</li>
+     *   <li>GROUP BY productId, productName —— 同一商品在不同订单里的多条明细聚成一行</li>
+     *   <li>ORDER BY SUM(quantity) DESC —— 销量最高的排最前</li>
+     * </ul>
+     *
+     * <p>两个进阶点：
+     * <ul>
+     *   <li><b>接口投影</b>：返回的不是实体而是 HotProductStat 接口，
+     *       JPQL 列别名（AS productId）与接口 getter 一一对应，Spring 自动填充（见接口注释）。</li>
+     *   <li><b>Pageable 当 LIMIT 用</b>：JPQL 没有 LIMIT 关键字，
+     *       调用方传 PageRequest.of(0, 5) 即等价于 LIMIT 5 —— "Top5"就是这么实现的。</li>
+     * </ul>
+     */
+    @Query("""
+            SELECT oi.productId     AS productId,
+                   oi.productName   AS productName,
+                   SUM(oi.quantity) AS totalQty
+              FROM OrderItem oi
+              JOIN oi.order o
+             WHERE o.status IN :statuses
+             GROUP BY oi.productId, oi.productName
+             ORDER BY SUM(oi.quantity) DESC
+            """)
+    List<HotProductStat> findHotProducts(@Param("statuses") Collection<OrderStatus> statuses,
+                                         Pageable pageable);
 
 }

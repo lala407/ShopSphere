@@ -1,0 +1,25 @@
+<!-- ============================================================
+AI 辅助说明：本文件由 AI 辅助生成/修改
+生成内容：友好 403 页（非管理员访问 /admin/** 时由 Spring Boot 自动渲染）
+人工修改：无
+审查状态：待人工审查
+============================================================ -->
+<!--
+  和 404 页同理：AdminInterceptor 里 response.sendError(403)
+  → Spring Boot 的 BasicErrorController 自动渲染 templates/error/403.html。
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('无权访问 - ShopSphere')}"></head>
+<body>
+<nav th:replace="~{fragments/nav :: nav}"></nav>
+
+<main class="container text-center py-5">
+    <h1 class="display-1 fw-bold text-muted">403</h1>
+    <p class="lead mb-4">抱歉，你没有权限访问后台管理页面</p>
+    <a href="/" class="btn btn-primary">返回首页逛逛</a>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

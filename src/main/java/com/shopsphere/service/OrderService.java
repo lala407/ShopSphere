@@ -1,6 +1,7 @@
 // ============================================================
 // AI 辅助说明：本文件由 AI 辅助生成/修改
 // 生成内容：OrderService 骨架 —— 事务骨架 + 订单号生成（计划书 3.5 AI 范围，AI 完整实现并讲解）
+//          [Day6] 后台订单状态流转：ship 发货、cancel 取消（回补库存）
 // 人工修改：createOrder / pay / 查询方法的方法体由 AI 按学员确认补充实现（学员授权直接补全）
 // 审查状态：待人工审查
 // ============================================================
@@ -175,6 +176,59 @@ public class OrderService {
     /** 某订单的明细列表。 */
     public List<OrderItem> getItems(Long orderId) {
         return orderItemRepository.findByOrderId(orderId);
+    }
+
+    // ==========================================================
+    // [AI完整实现 Day6] 后台订单管理：发货 / 取消
+    // （计划书 0.3 分工：订单状态流转属 AI 范围）
+    // ==========================================================
+
+    /**
+     * 发货：PAID → SHIPPED。
+     *
+     * <p>和前台的 pay() 同一套路：查订单 → 状态判断 → 改状态 + 记时间，
+     * 靠 @Transactional 的脏检查自动 UPDATE，不用调 save。
+     * 区别只在"谁触发的"：pay 是用户点付款（要校验归属），ship 是管理员发货（不用）。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void ship(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("订单不存在"));
+        if (order.getStatus() != OrderStatus.PAID) {
+            throw new IllegalArgumentException("只有已付款订单可以发货");
+        }
+        order.setStatus(OrderStatus.SHIPPED);
+        order.setShippedAt(LocalDateTime.now());
+    }
+
+    /**
+     * 取消订单（后台）：CREATED / PAID → CANCELLED，并回补库存。
+     *
+     * <p>为什么两种状态取消都要回补库存？
+     * 本项目的库存是在【下单那一刻】就扣掉的（见 createOrder 步骤 5），
+     * 不是付款时才扣。所以无论订单停在 CREATED 还是 PAID，
+     * 取消时都必须把数量加回去，否则这批货就"凭空消失"了。
+     *
+     * <p>SHIPPED 之后不允许取消——货已发出，现实中要走退货流程（MVP 不做）。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void cancel(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("订单不存在"));
+        if (order.getStatus() != OrderStatus.CREATED && order.getStatus() != OrderStatus.PAID) {
+            throw new IllegalArgumentException("当前状态不允许取消（仅待付款/已付款订单可取消）");
+        }
+        // 逐条明细回补库存（无条件 UPDATE，见 ProductRepository.restoreStock）
+        for (OrderItem item : orderItemRepository.findByOrderId(orderId)) {
+            productRepository.restoreStock(item.getProductId(), item.getQuantity());
+        }
+        order.setStatus(OrderStatus.CANCELLED);
+        order.setCancelledAt(LocalDateTime.now());
+
+        // ⚠️ 必须显式 save：restoreStock 的 clearAutomatically=true 会清空持久化上下文，
+        // order 实体已被"脱管"（detached），靠脏检查自动 UPDATE 的前提不存在了。
+        // save() 触发 merge，把脱管实体的状态合并回上下文，提交时才发出 UPDATE。
+        orderRepository.save(order);
     }
 
     /**

@@ -1,0 +1,30 @@
+<!-- ============================================================
+AI 辅助说明：本文件由 AI 辅助生成/修改
+生成内容：友好 500 页（系统异常由 GlobalExceptionHandler 或 Spring Boot 渲染）
+人工修改：无
+审查状态：待人工审查
+============================================================ -->
+<!--
+  500 = 服务器内部错误。用户看到这个页面时，问题已经发生了，
+  我们能做的只有：① 别让他看到堆栈 ② 告诉他可以回去重试。
+  真正的排查靠 GlobalExceptionHandler 打的 log.error 堆栈。
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('服务器开小差 - ShopSphere')}"></head>
+<body>
+<nav th:replace="~{fragments/nav :: nav}"></nav>
+
+<main class="container text-center py-5">
+    <h1 class="display-1 fw-bold text-muted">500</h1>
+    <p class="lead mb-2">服务器出了点问题，请稍后再试</p>
+    <!-- 开发期留个口子：页面上能看到异常摘要，正式环境应删掉这一行 -->
+    <p class="text-muted" th:if="${errorMessage != null}">
+        <small th:text="${errorMessage}">异常信息</small>
+    </p>
+    <a href="/" class="btn btn-primary mt-3">返回首页</a>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

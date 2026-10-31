@@ -1,0 +1,93 @@
+<!-- ============================================================
+AI 辅助说明：本文件由 AI 辅助生成/修改
+生成内容：admin/product-form.html —— 商品新增/编辑共用表单（复杂后台页面，计划书 3.6 AI 范围）
+人工修改：无
+审查状态：待人工审查
+============================================================ -->
+<!--
+  依赖的 model（AdminProductController.newForm / editForm 提供）：
+    product    —— Product（新增是空对象，编辑是数据库查出来的）
+    categories —— List<Category>（分类下拉框）
+
+  新增/编辑共用一个模板的关键手法：
+  1. th:object="${product}" + th:field="*{xxx}" —— 表单值自动绑回对象
+  2. 隐藏域 *{id} —— 新增时 id 为空、编辑时带 id，Controller 靠它判断走哪条分支
+  3. 标题用 ${product.id == null} ? '新增' : '编辑' 切换
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${product.id == null ? '新增商品' : '编辑商品'} + ' - 后台')}"></head>
+<body>
+<nav th:replace="~{fragments/nav :: nav}"></nav>
+
+<main class="container" style="max-width: 760px;">
+    <ul class="nav nav-pills mb-4">
+        <li class="nav-item"><a class="nav-link active" href="/admin/product">商品管理</a></li>
+        <li class="nav-item"><a class="nav-link" href="/admin/order">订单管理</a></li>
+        <li class="nav-item"><a class="nav-link" href="/admin/stats">统计报表</a></li>
+    </ul>
+
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <h4 class="mb-3" th:text="${product.id == null} ? '新增商品' : '编辑商品 #' + ${product.id}">表单</h4>
+
+    <form th:action="@{/admin/product/save}" th:object="${product}" method="post"
+          class="card card-body shadow-sm">
+        <!-- 隐藏域：编辑时带上 id，新增时为空 -->
+        <input type="hidden" th:field="*{id}">
+
+        <div class="mb-3">
+            <label class="form-label">商品名称</label>
+            <input type="text" class="form-control" th:field="*{name}" required maxlength="100">
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">分类</label>
+                <select class="form-select" th:field="*{categoryId}">
+                    <option th:each="c : ${categories}" th:value="${c.id}" th:text="${c.name}">分类</option>
+                </select>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">状态</label>
+                <!-- th:field 会自动选中当前状态对应的 option，不用手写 th:selected -->
+                <select class="form-select" th:field="*{status}">
+                    <option value="ON_SALE">在售</option>
+                    <option value="OFF_SHELF">下架</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">价格（元）</label>
+                <input type="number" class="form-control" th:field="*{price}"
+                       min="0.01" step="0.01" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">库存</label>
+                <input type="number" class="form-control" th:field="*{stock}"
+                       min="0" step="1" required>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">图片 URL <small class="text-muted">（外链，可留空）</small></label>
+            <input type="text" class="form-control" th:field="*{imageUrl}" placeholder="https://...">
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">商品描述</label>
+            <textarea class="form-control" rows="3" th:field="*{description}"></textarea>
+        </div>
+
+        <div>
+            <button type="submit" class="btn btn-primary">保存</button>
+            <a href="/admin/product" class="btn btn-outline-secondary">返回列表</a>
+        </div>
+    </form>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

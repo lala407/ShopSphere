@@ -1,0 +1,104 @@
+<!-- ============================================================
+AI 辅助说明：本文件由 AI 辅助生成/修改
+生成内容：admin/order-detail.html —— 后台订单详情（发货/取消操作）（复杂后台页面，计划书 3.6 AI 范围）
+人工修改：无
+审查状态：待人工审查
+============================================================ -->
+<!--
+  依赖的 model（AdminOrderController.detail 提供）：
+    order —— Order
+    items —— List<OrderItem>（价格快照）
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('订单详情 - 后台')}"></head>
+<body>
+<nav th:replace="~{fragments/nav :: nav}"></nav>
+
+<main class="container">
+    <ul class="nav nav-pills mb-4">
+        <li class="nav-item"><a class="nav-link" href="/admin/product">商品管理</a></li>
+        <li class="nav-item"><a class="nav-link active" href="/admin/order">订单管理</a></li>
+        <li class="nav-item"><a class="nav-link" href="/admin/stats">统计报表</a></li>
+    </ul>
+
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+    <div th:if="${msg}" class="alert alert-success" th:text="${msg}"></div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">订单详情 <small class="text-muted" th:text="${order.orderNo}"></small></h4>
+        <a href="/admin/order" class="btn btn-outline-secondary btn-sm">返回列表</a>
+    </div>
+
+    <div class="row">
+        <!-- 左：订单与收货信息 -->
+        <div class="col-md-5">
+            <div class="card card-body shadow-sm mb-3">
+                <p class="mb-2">状态：
+                    <span class="badge"
+                          th:classappend="${order.status.name() == 'PAID'} ? 'bg-primary' :
+                                          (${order.status.name() == 'SHIPPED'} ? 'bg-info' :
+                                          (${order.status.name() == 'COMPLETED'} ? 'bg-success' :
+                                          (${order.status.name() == 'CANCELLED'} ? 'bg-secondary' : 'bg-warning text-dark')))"
+                          th:text="${order.status.label}"></span>
+                </p>
+                <p class="mb-2">下单用户：<span th:text="${order.user.username}"></span></p>
+                <p class="mb-2">收货人：<span th:text="${order.receiverName}"></span>
+                    <span class="text-muted" th:text="${order.receiverPhone}"></span></p>
+                <p class="mb-2">地址：<span th:text="${order.receiverAddress}"></span></p>
+                <p class="mb-2" th:if="${order.remark != null and !order.remark.isEmpty()}">
+                    备注：<span th:text="${order.remark}"></span></p>
+                <hr>
+                <p class="mb-1 text-muted"><small>下单：<span
+                        th:text="${#temporals.format(order.createdAt, 'yyyy-MM-dd HH:mm:ss')}"></span></small></p>
+                <p class="mb-1 text-muted" th:if="${order.paidAt != null}"><small>付款：<span
+                        th:text="${#temporals.format(order.paidAt, 'yyyy-MM-dd HH:mm:ss')}"></span></small></p>
+                <p class="mb-1 text-muted" th:if="${order.shippedAt != null}"><small>发货：<span
+                        th:text="${#temporals.format(order.shippedAt, 'yyyy-MM-dd HH:mm:ss')}"></span></small></p>
+                <p class="mb-1 text-muted" th:if="${order.cancelledAt != null}"><small>取消：<span
+                        th:text="${#temporals.format(order.cancelledAt, 'yyyy-MM-dd HH:mm:ss')}"></span></small></p>
+            </div>
+
+            <!-- 操作按钮：按状态条件显示（与 OrderService 的状态判断前后呼应） -->
+            <div class="d-flex gap-2 mb-3">
+                <form th:if="${order.status.name() == 'PAID'}"
+                      th:action="@{/admin/order/{id}/ship(id=${order.id})}" method="post">
+                    <button type="submit" class="btn btn-primary"
+                            onclick="return confirm('确认发货？')">发货</button>
+                </form>
+                <form th:if="${order.status.name() == 'CREATED' or order.status.name() == 'PAID'}"
+                      th:action="@{/admin/order/{id}/cancel(id=${order.id})}" method="post">
+                    <button type="submit" class="btn btn-outline-danger"
+                            onclick="return confirm('取消订单将回补库存，确认取消？')">取消订单</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 右：明细（价格快照） -->
+        <div class="col-md-7">
+            <table class="table align-middle">
+                <thead class="table-light">
+                <tr><th>商品（下单时快照）</th><th>单价</th><th>数量</th><th>小计</th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="it : ${items}">
+                    <td th:text="${it.productName}">商品名</td>
+                    <td th:text="${'¥' + it.productPrice}">¥0</td>
+                    <td th:text="${it.quantity}">1</td>
+                    <td th:text="${'¥' + it.subtotal}">¥0</td>
+                </tr>
+                </tbody>
+                <tfoot>
+                <tr class="fw-bold">
+                    <td colspan="3" class="text-end">订单总额</td>
+                    <td class="text-danger" th:text="${'¥' + order.totalAmount}">¥0</td>
+                </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>
