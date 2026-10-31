@@ -1,0 +1,156 @@
+// ============================================================
+// AI 辅助说明：本文件由 AI 辅助生成/修改
+// 生成内容：AdminProductController 骨架（类声明、注解、字段 + 各方法 TODO 步骤）
+// 人工修改：全部方法体由 AI 按学员确认补充实现（学员授权直接补全）
+// 审查状态：待人工审查
+// ============================================================
+package com.shopsphere.controller;
+
+import com.shopsphere.common.ProductStatus;
+import com.shopsphere.entity.Category;
+import com.shopsphere.entity.Product;
+import com.shopsphere.repository.CategoryRepository;
+import com.shopsphere.repository.ProductRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.Map;
+import java.util.stream.Collectors;
+
+/**
+ * 后台·商品管理（计划书 3.6）：分页列表 / 新增 / 编辑 / 上下架（软删除）。
+ *
+ * <p>[AI骨架] 路由与方法签名已就位，方法体由你手写。
+ * 页面模板（admin/product-list.html、admin/product-form.html）由 AI 完整实现，
+ * 它们要求的 model 属性写在各方法 javadoc 里——key 必须一字不差。
+ *
+ * <p>类上的 @RequestMapping("/admin/product")：本类所有路径都以此为前缀。
+ * 整个 /admin/** 已被 AdminInterceptor 拦截（仅 ADMIN 可进），这里不用判权限。
+ *
+ * <p>和前台 ProductController 一样直接调 Repository——
+ * 后台 CRUD 没有跨表业务规则，不需要 Service 层（订单的发货/取消才有，走 OrderService）。
+ */
+@Controller
+@RequestMapping("/admin/product")
+@RequiredArgsConstructor
+public class AdminProductController {
+
+    private final ProductRepository productRepository;
+    private final CategoryRepository categoryRepository;
+
+    /**
+     * 商品列表 GET /admin/product?page=
+     *
+     * model 需要两样：
+     *   pageData    —— Page&lt;Product&gt;（后台看全部商品，含已下架；每页 10 条，id 倒序）
+     *   categoryMap —— Map&lt;Long, String&gt;：分类 id → 分类名
+     *                  （页面按这个 Map 把 categoryId 翻译成中文名显示）
+     */
+    @GetMapping
+    public String list(@RequestParam(defaultValue = "0") int page, Model model) {
+        // 1) 分页：每页 10 条，id 倒序（findAll(Pageable) 是 JpaRepository 自带的）
+        Pageable pageable = PageRequest.of(page, 10, Sort.by("id").descending());
+        Page<Product> pageData = productRepository.findAll(pageable);
+
+        // 2) categoryMap：分类 id → 分类名（页面按 id 显示中文名）
+        Map<Long, String> categoryMap = categoryRepository.findAll().stream()
+                .collect(Collectors.toMap(Category::getId, Category::getName));
+
+        // 3) 塞 model
+        model.addAttribute("pageData", pageData);
+        model.addAttribute("categoryMap", categoryMap);
+        return "admin/product-list";
+    }
+
+    /**
+     * 新增表单 GET /admin/product/new。
+     *
+     * model 需要：product（一个 new 出来的空 Product，模板靠它渲染表单）
+     *            categories（分类下拉框，用按 sortOrder 升序那个方法）
+     */
+    @GetMapping("/new")
+    public String newForm(Model model) {
+        model.addAttribute("product", new Product());   // 空对象：模板靠 id==null 判断是新增
+        model.addAttribute("categories", categoryRepository.findAllByOrderBySortOrderAsc());
+        return "admin/product-form";
+    }
+
+    /**
+     * 编辑表单 GET /admin/product/{id}/edit —— 与新增共用同一个模板。
+     *
+     * 模板怎么区分新增/编辑？看 product.id 是否为 null（隐藏域 + 标题判断）。
+     */
+    @GetMapping("/{id}/edit")
+    public String editForm(@PathVariable Long id, Model model) {
+        // 查不到抛业务异常 —— 不用 try-catch，GlobalExceptionHandler 会接住：
+        // flash 提示 + 退回来源页（Day6 全局异常处理的实际效果）
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("商品不存在"));
+        model.addAttribute("product", product);
+        model.addAttribute("categories", categoryRepository.findAllByOrderBySortOrderAsc());
+        return "admin/product-form";
+    }
+
+    /**
+     * 保存 POST /admin/product/save —— 新增与编辑共用。
+     *
+     * 表单字段自动绑定成 Product 对象（Spring 按字段名对应：
+     * name/price/stock/categoryId/imageUrl/description/status + 隐藏域 id）。
+     */
+    @PostMapping("/save")
+    public String save(Product product, RedirectAttributes redirectAttributes) {
+        if (product.getId() == null) {
+            // 新增：直接保存（createdAt 由 @PrePersist 自动填充）
+            productRepository.save(product);
+        } else {
+            // 编辑：先查后改再存——表单里没有 sales / createdAt，
+            // 直接 save(product) 会把这两个字段覆盖成 0/null
+            Product old = productRepository.findById(product.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("商品不存在"));
+            old.setName(product.getName());
+            old.setPrice(product.getPrice());
+            old.setStock(product.getStock());
+            old.setCategoryId(product.getCategoryId());
+            old.setImageUrl(product.getImageUrl());
+            old.setDescription(product.getDescription());
+            old.setStatus(product.getStatus());
+            productRepository.save(old);
+        }
+        redirectAttributes.addFlashAttribute("msg", "保存成功");
+        return "redirect:/admin/product";
+    }
+
+    /**
+     * 上架/下架切换 POST /admin/product/{id}/toggle-status（软删除，计划书 1.2）。
+     *
+     * 为什么"删除商品"要做成改状态？
+     * 商品已被订单引用过（快照里存了 productId），物理删除会丢历史；
+     * 下架后前台 searchOnSale 自动查不到，零副作用。
+     */
+    @PostMapping("/{id}/toggle-status")
+    public String toggleStatus(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("商品不存在"));
+        // 在售 ↔ 下架 互切（软删除）
+        if (product.getStatus() == ProductStatus.ON_SALE) {
+            product.setStatus(ProductStatus.OFF_SHELF);
+            redirectAttributes.addFlashAttribute("msg", "商品「" + product.getName() + "」已下架");
+        } else {
+            product.setStatus(ProductStatus.ON_SALE);
+            redirectAttributes.addFlashAttribute("msg", "商品「" + product.getName() + "」已上架");
+        }
+        productRepository.save(product);
+        return "redirect:/admin/product";
+    }
+}
