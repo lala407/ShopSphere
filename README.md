@@ -11,13 +11,17 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
 
 > 《网络应用架构设计与开发》课程实验 · 7 天 MVP
 > 学号：202430453150　姓名：周丹璐　班级：网络工程
-> 公网演示地址：http://62.234.217.77:8080　（容器启动 + 安全组放行 8080 后可直接访问）
+> 公网演示地址：http://62.234.217.77:8080　（2026-11-15 已验证可访问：首页 / 登录 / 商品详情正常）
 
 一个可部署上线的单体电商网站最小可行产品：服务器端渲染，覆盖「浏览 → 加购 → 下单 → 付款 → 看订单」完整闭环，配套后台「商品管理 + 订单管理 + 简单统计」。
 
 ## 技术栈
 
-Java 21 · Spring Boot 3.2 · Spring MVC · Thymeleaf · Spring Data JPA · MySQL 8 · Bootstrap 5 · BCrypt · Session + 拦截器 · Docker Compose
+Java 21 · Spring Boot 3.2 · Spring MVC · Thymeleaf · Spring Data JPA · MySQL 8 · Bootstrap 5（**本地文件，不走 CDN**）· BCrypt · Session + 拦截器 · Docker Compose
+
+> **静态资源全部本地化**：`bootstrap.min.css` 与 20 张商品图都放在 `src/main/resources/static/`，
+> 页面没有任何外链。断网、校园网限速、CDN 被墙都不影响渲染（早期版本用 jsdelivr + picsum，
+> 一旦访问不通整站会变成无样式白页）。
 
 ## 功能清单
 
@@ -162,6 +166,7 @@ src/main/java/com/shopsphere/
 src/main/resources/
 ├── application.yml  # 数据源 + SMTP 均支持环境变量注入
 ├── data.sql         # 幂等种子数据（INSERT IGNORE，每次启动自动执行）
+├── static/          # 本地静态资源：css/bootstrap.min.css（5.3.3 原样）、images/p01–p20.svg + favicon
 └── templates/       # Thymeleaf 页面（前台 + admin + error）
 src/test/
 ├── java/.../OrderMailFlowTest.java   # 下单→付款→发货 全链路 + 邮件日志（MockMvc + H2）

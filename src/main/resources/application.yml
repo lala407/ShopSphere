@@ -7,6 +7,12 @@
 
 server:
   port: 8080
+  # [AI辅助 2026-11-15] 只允许 Cookie 承载会话，关掉 URL 重写。
+  # 默认情况下 Tomcat 在客户端还没有 Cookie 时会把 ;jsessionid=xxx 拼到每个链接后面
+  # （首访首页时分类按钮会变成 /;jsessionid=ABC?cid=1），截图难看，会话 ID 也会泄露在地址栏。
+  servlet:
+    session:
+      tracking-modes: cookie
 
 spring:
   # Thymeleaf：关闭缓存，改模板立即生效（开发时）
