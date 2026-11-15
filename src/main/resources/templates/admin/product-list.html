@@ -17,11 +17,7 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
 
 <main class="container">
     <!-- 后台子导航：当前页高亮（active） -->
-    <ul class="nav nav-pills mb-4">
-        <li class="nav-item"><a class="nav-link active" href="/admin/product">商品管理</a></li>
-        <li class="nav-item"><a class="nav-link" href="/admin/order">订单管理</a></li>
-        <li class="nav-item"><a class="nav-link" href="/admin/stats">统计报表</a></li>
-    </ul>
+    <ul th:replace="~{fragments/admin-nav :: tabs('product')}"></ul>
 
     <!-- flash 提示：操作成功/失败的反馈 -->
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>

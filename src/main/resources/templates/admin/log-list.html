@@ -1,0 +1,148 @@
+<!-- ============================================================
+AI 辅助说明：本文件由 AI 辅助生成/修改
+生成内容：admin/log-list.html —— 后台访问日志（浏览日志 + 购买日志，P0-2）
+人工修改：无
+审查状态：待人工审查
+============================================================ -->
+<!--
+  依赖的 model（AdminLogController.list 提供）：
+    pageData    —— Page<AccessLog>
+    action/from/to —— 当前筛选条件（回显用）
+    actions     —— AccessAction[] 下拉选项
+    counts      —— Map<AccessAction, Long> 各动作总次数
+    todayCount  —— 今日新增条数
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('访问日志 - 后台')}"></head>
+<body>
+<nav th:replace="~{fragments/nav :: nav}"></nav>
+
+<main class="container">
+    <ul th:replace="~{fragments/admin-nav :: tabs('log')}"></ul>
+
+    <h4 class="mb-3">访问日志</h4>
+    <p class="text-muted">
+        记录浏览（列表 / 商品详情）与购买（加购 / 下单 / 付款）两类动作，共
+        <span class="fw-bold" th:text="${pageData.totalElements}">0</span> 条匹配记录。
+    </p>
+
+    <!-- 指标卡：今日新增 + 每个动作的次数（th:each 遍历枚举，避免写 5 个重复卡片） -->
+    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-6 g-2 mb-4">
+        <div class="col">
+            <div class="card card-body text-center h-100 border-primary">
+                <div class="text-muted small">今日新增</div>
+                <div class="fs-4 fw-bold text-primary" th:text="${todayCount}">0</div>
+                <div class="text-muted" style="font-size:11px;">条</div>
+            </div>
+        </div>
+        <div class="col" th:each="a : ${actions}">
+            <div class="card card-body text-center h-100">
+                <div class="text-muted small" th:text="${a.label}">动作</div>
+                <div class="fs-4 fw-bold" th:text="${counts[a.name()]}">0</div>
+                <div class="text-muted" style="font-size:11px;" th:text="${a.category}">分类</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 筛选栏：动作 + 日期范围，三个条件都能单独用 -->
+    <form class="row g-2 align-items-end mb-3" method="get" action="/admin/log">
+        <div class="col-sm-3">
+            <label class="form-label mb-0" for="action">动作</label>
+            <select class="form-select" id="action" name="action">
+                <option value="">全部</option>
+                <option th:each="a : ${actions}"
+                        th:value="${a.name()}"
+                        th:text="${a.label + '（' + a.category + '）'}"
+                        th:selected="${action != null and action.name() == a.name()}">动作</option>
+            </select>
+        </div>
+        <div class="col-sm-3">
+            <label class="form-label mb-0" for="from">起始日期</label>
+            <input type="date" class="form-control" id="from" name="from" th:value="${from}">
+        </div>
+        <div class="col-sm-3">
+            <label class="form-label mb-0" for="to">结束日期</label>
+            <input type="date" class="form-control" id="to" name="to" th:value="${to}">
+        </div>
+        <div class="col-sm-3">
+            <button type="submit" class="btn btn-primary">筛选</button>
+            <a class="btn btn-outline-secondary" href="/admin/log">重置</a>
+        </div>
+    </form>
+
+    <!-- 日志表：只增不删，永远按时间倒序 -->
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+            <tr>
+                <th style="width: 130px;">时间</th>
+                <th style="width: 90px;">用户</th>
+                <th style="width: 110px;">动作</th>
+                <th style="width: 120px;">目标</th>
+                <th style="width: 120px;">IP</th>
+                <th>User-Agent</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="log : ${pageData.content}">
+                <td th:text="${#temporals.format(log.createdAt, 'MM-dd HH:mm:ss')}">11-15 17:34:13</td>
+                <td>
+                    <!-- 游客没有 userId：靠 sessionId 区分身份 -->
+                    <span th:if="${log.userId != null}"
+                          th:text="'#' + ${log.userId}">#1</span>
+                    <span th:if="${log.userId == null}" class="text-muted"
+                          th:title="${log.sessionId}">游客</span>
+                </td>
+                <td>
+                    <span class="badge"
+                          th:classappend="${log.action.category == '购买'} ? 'text-bg-primary' : 'text-bg-secondary'"
+                          th:text="${log.action.label}">浏览</span>
+                </td>
+                <td>
+                    <span th:if="${log.targetId != null}"
+                          th:text="${log.targetType} + ' #' + ${log.targetId}">PRODUCT #12</span>
+                    <span th:if="${log.targetId == null}" class="text-muted">—</span>
+                </td>
+                <td class="text-muted small" th:text="${log.ip}">127.0.0.1</td>
+                <td class="text-muted small"
+                    th:text="${#strings.abbreviate(log.userAgent, 70)}"
+                    th:title="${log.userAgent}">Mozilla/5.0 ...</td>
+            </tr>
+            <tr th:if="${pageData.empty}">
+                <td colspan="6" class="text-center text-muted py-4">
+                    没有匹配的日志。去前台浏览几个商品、加个购物车，再回来看看。
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 分页：翻页必须带上筛选条件，否则一翻就从"只看下单"变成"全部" -->
+    <nav th:if="${pageData.totalPages > 1}" aria-label="日志分页">
+        <ul class="pagination justify-content-center mt-4">
+            <li class="page-item" th:classappend="${pageData.first} ? 'disabled'">
+                <a class="page-link"
+                   th:href="@{/admin/log(page=${pageData.number - 1}, action=${action}, from=${from}, to=${to})}">上一页</a>
+            </li>
+            <li class="page-item"
+                th:each="i : ${#numbers.sequence(0, pageData.totalPages - 1)}"
+                th:classappend="${i == pageData.number} ? 'active'">
+                <a class="page-link"
+                   th:href="@{/admin/log(page=${i}, action=${action}, from=${from}, to=${to})}"
+                   th:text="${i + 1}">1</a>
+            </li>
+            <li class="page-item" th:classappend="${pageData.last} ? 'disabled'">
+                <a class="page-link"
+                   th:href="@{/admin/log(page=${pageData.number + 1}, action=${action}, from=${from}, to=${to})}">下一页</a>
+            </li>
+        </ul>
+        <p class="text-center text-muted">
+            <small>第 <span th:text="${pageData.number + 1}">1</span> /
+                <span th:text="${pageData.totalPages}">1</span> 页，共
+                <span th:text="${pageData.totalElements}">0</span> 条</small>
+        </p>
+    </nav>
+</main>
+</body>
+</html>

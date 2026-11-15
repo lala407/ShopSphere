@@ -1,0 +1,33 @@
+<!-- ============================================================
+AI 辅助说明：本文件由 AI 辅助生成/修改
+生成内容：后台子导航片段（4 个页签）——抽取自 5 个后台页面里重复的 nav-pills
+人工修改：无
+审查状态：待人工审查
+============================================================ -->
+<!--
+  用法（在后台页面里一行引入，参数是当前页签）：
+    <ul th:replace="~{fragments/admin-nav :: tabs('product')}"></ul>
+  可选值：product / order / stats / log
+
+  为什么要抽成片段？
+  原来 5 个后台模板里各贴一份 3 行的 nav-pills，加"访问日志"页签时要改 5 处，
+  漏一处就出现"某个页面没有入口"的诡异现象。抽成片段后只改这一处。
+-->
+<ul th:fragment="tabs(active)" class="nav nav-pills mb-4">
+    <li class="nav-item">
+        <a class="nav-link" th:classappend="${active == 'product'} ? 'active'"
+           href="/admin/product">商品管理</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" th:classappend="${active == 'order'} ? 'active'"
+           href="/admin/order">订单管理</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" th:classappend="${active == 'stats'} ? 'active'"
+           href="/admin/stats">统计报表</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" th:classappend="${active == 'log'} ? 'active'"
+           href="/admin/log">访问日志</a>
+    </li>
+</ul>

@@ -6,8 +6,10 @@
 // ============================================================
 package com.shopsphere.config;
 
+import com.shopsphere.interceptor.AccessLogInterceptor;
 import com.shopsphere.interceptor.AdminInterceptor;
 import com.shopsphere.interceptor.LoginInterceptor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -23,7 +25,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * 的返回值注册为容器里的 Bean（单例），供其他类注入使用。
  */
 @Configuration
+@RequiredArgsConstructor
 public class WebConfig implements WebMvcConfigurer {
+
+    /** 访问日志拦截器需要注入 Service，所以不能像另外两个那样 new。 */
+    private final AccessLogInterceptor accessLogInterceptor;
 
     /**
      * 注册登录拦截器。
@@ -47,6 +53,13 @@ public class WebConfig implements WebMvcConfigurer {
         // 所以不用再把这些路径塞进 LoginInterceptor）
         registry.addInterceptor(new AdminInterceptor())
                 .addPathPatterns("/admin/**");
+
+        // [P0-2] 访问日志：记录 5 个业务动作（浏览列表/商品详情/加购/下单/付款）。
+        // 拦 /** 但内部只认白名单路径；静态资源与错误页直接排除，省掉无意义的判断开销。
+        registry.addInterceptor(accessLogInterceptor)
+                .addPathPatterns("/**")
+                .excludePathPatterns("/css/**", "/js/**", "/images/**",
+                        "/favicon.ico", "/error", "/error/**");
     }
 
     /**

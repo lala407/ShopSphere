@@ -17,11 +17,7 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
 <nav th:replace="~{fragments/nav :: nav}"></nav>
 
 <main class="container">
-    <ul class="nav nav-pills mb-4">
-        <li class="nav-item"><a class="nav-link" href="/admin/product">商品管理</a></li>
-        <li class="nav-item"><a class="nav-link active" href="/admin/order">订单管理</a></li>
-        <li class="nav-item"><a class="nav-link" href="/admin/stats">统计报表</a></li>
-    </ul>
+    <ul th:replace="~{fragments/admin-nav :: tabs('order')}"></ul>
 
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
     <div th:if="${msg}" class="alert alert-success" th:text="${msg}"></div>
