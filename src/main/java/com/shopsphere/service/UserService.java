@@ -48,22 +48,34 @@ public class UserService {
             throw new IllegalArgumentException("密码长度需在 6-20 字符之间");
         }
 
-        // 2) 用户名查重
+        // 2) [AI辅助 Day8] 邮箱必填 + 格式校验
+        //    前端 type="email" 只是"提示"，改个请求就能绕过，后端必须再校验一遍。
+        //    正则只做基本格式判断（有本地部分、@、域名、至少两段后缀），
+        //    真正的有效性只能靠发一封邮件验证（本实验不做邮箱验证码，记录为已知限制）。
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("邮箱不能为空（用于接收订单确认与发货通知）");
+        }
+        email = email.trim();
+        if (email.length() > 100 || !email.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+            throw new IllegalArgumentException("邮箱格式不正确，例如 name@example.com");
+        }
+
+        // 3) 用户名查重
         if (userRepository.findByUsername(username).isPresent()) {
             throw new IllegalArgumentException("用户名已被占用");
         }
 
-        // 3) 组装实体
+        // 4) 组装实体
         User user = new User();
         user.setUsername(username);
         user.setEmail(email);
         user.setRole(UserRole.CUSTOMER);
         user.setStatus(1);
 
-        // 4) 密码加密后再入库
+        // 5) 密码加密后再入库
         user.setPassword(passwordEncoder.encode(password));
 
-        // 5) 保存
+        // 6) 保存
         userRepository.save(user);
     }
 

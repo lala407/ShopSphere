@@ -1,0 +1,41 @@
+# ============================================================
+# [AI辅助 Day8] 集成测试专用配置
+# 目的：测试不依赖本机 MySQL，也不往真实邮箱发信
+# 只在本目录（src/test/resources）生效，不会影响生产运行
+# ============================================================
+spring:
+  datasource:
+    # H2 内存库 + MySQL 兼容模式：JPQL 与大部分 MySQL 语法都能跑
+    url: jdbc:h2:mem:shopsphere-test;MODE=MySQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop      # 每次测试重建表，跑完销毁
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+    open-in-view: false
+    defer-datasource-initialization: true
+
+  sql:
+    init:
+      # 关掉 data.sql：测试数据由 @BeforeEach 自己插入，避免 INSERT IGNORE 的方言差异
+      mode: never
+
+  mail:
+    # 测试里不配账号 → MailService 会把每封信记为 SKIPPED，
+    # 正好用来验证"没配 SMTP 时也不能影响下单"
+    host: localhost
+    port: 1025
+    username:
+    password:
+
+shopsphere:
+  mail:
+    enabled: true
+    from-name: ShopSphere 测试
+    base-url: http://localhost:8080

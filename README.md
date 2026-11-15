@@ -21,22 +21,60 @@ Java 21 · Spring Boot 3.2 · Spring MVC · Thymeleaf · Spring Data JPA · MySQ
 
 ## 功能清单
 
-**顾客端**：注册 / 登录 / 注销（BCrypt + Session）· 商品列表（分类筛选 + 关键字搜索 + 分页）· 商品详情 · 购物车（加购合并、改量、删除、合计）· 下单（收货校验 → 事务建单 → 价格快照 → 条件扣库存 → 清购物车）· 模拟付款 · 订单历史与详情
+**顾客端**：注册（**邮箱必填**，用于接收订单通知）/ 登录 / 注销（BCrypt + Session）· 商品列表（分类筛选 + 关键字搜索 + 分页）· 商品详情 · 购物车（加购合并、改量、删除、合计）· 下单（收货校验 → 事务建单 → 价格快照 → 条件扣库存 → 清购物车）· 模拟付款 · 订单历史与详情
+
+**邮件通知**：下单成功 / 付款成功 / 发货 三个节点自动发中文 HTML 邮件 · 事务提交后才发（回滚不发信）· 发信失败不影响订单 · 每封信留痕在 `mail_log`，订单详情页直接显示「已发送至 xxx / 未发送（原因）」
 
 **管理端**（`/admin/**`，仅 ADMIN）：商品 CRUD（软删除上下架）· 订单筛选 / 发货 / 取消（回补库存）· 统计（订单总数、销售额、热销 Top5）
 
-**非功能**：登录拦截器 · 管理员拦截器（越权 403）· 库存不足整单回滚 · 全局异常处理 + 友好错误页（403/404/500）
+**非功能**：登录拦截器 · 管理员拦截器（越权 403）· 库存不足整单回滚 · 全局异常处理 + 友好错误页（403/404/500）· 集成测试（H2 内存库，4 个用例）
 
 ## 测试账号
 
 | 角色 | 账号 | 密码 | 说明 |
 |---|---|---|---|
 | 管理员 | `admin` | `admin123` | 种子预置，可进 `/admin` 后台 |
-| 普通用户 | 自行注册 | — | 注册页即时创建 |
+| 普通用户 | 自行注册 | — | 注册页即时创建，**邮箱必填**（订单通知发到这里） |
+
+## 邮件通知配置（SMTP）
+
+下单成功、付款成功、发货三个节点会自动发中文 HTML 邮件。**不配也能跑**：没配 SMTP 账号时，邮件记为 `SKIPPED`，订单照常创建，主流程不受影响。
+
+**QQ 邮箱示例**（163 同理，把 host 换成 `smtp.163.com`）：
+
+1. 登录 QQ 邮箱 → 设置 → 账号 → 开启「POP3/SMTP 服务」；
+2. 生成「授权码」（16 位，**不是 QQ 登录密码**）；
+3. 配置环境变量：
+
+```bash
+# bash / macOS
+export MAIL_USERNAME="你的QQ号@qq.com"
+export MAIL_PASSWORD="16位授权码"
+export APP_BASE_URL="http://localhost:8080"     # 部署后改成公网地址
+
+# PowerShell
+$env:MAIL_USERNAME="你的QQ号@qq.com"; $env:MAIL_PASSWORD="16位授权码"
+```
+
+Docker 部署时把这三项写进 `.env`（`MAIL_ENABLED / MAIL_HOST / MAIL_PORT / MAIL_USERNAME / MAIL_PASSWORD / APP_BASE_URL`），`docker compose` 会自动注入。
+
+**怎么验证邮件真的发了？**
+
+1. 下单 / 付款 / 发货后，打开订单详情页，会多出一块「邮件通知」：
+   - `已发送至 xxx@example.com（时间）` —— 成功；
+   - `未发送 —— 未配置发件账号（环境变量 MAIL_USERNAME）` —— 还没配 SMTP；
+   - `发送失败 —— MailAuthenticationException: ...` —— 授权码错/被限制。
+2. 数据库 `mail_log` 表里每封信一条记录（类型、收件人、结果、失败原因），后台订单详情同样可见。
+3. 收件箱里应收到三封：`下单成功` → `付款成功` → `您的订单已发货`。
+
+> 实现要点：邮件事件用 `@TransactionalEventListener(AFTER_COMMIT)` 在**事务提交后**才触发（回滚不发信）；发送失败只记 `FAILED`，绝不回滚订单。`mail_log` 用独立事务（`REQUIRES_NEW`）写入——这是踩过坑的地方，详见 `MailLogWriter` 注释。
 
 ## 本地开发（Windows / Mac）
 
 前置：JDK 21、Maven 3.9、本机 MySQL 8（utf8mb4）。
+
+> ⚠️ 项目用 `java.version=21`，**必须让 Maven 用 JDK 21**。若 `mvn -v` 显示 Java 17，会报「无效的目标发行版 21」。
+> PowerShell 临时指定：`$env:JAVA_HOME="C:\Program Files\Microsoft\jdk-21..."`（换成你的实际路径）。
 
 ```bash
 # 1. 克隆
@@ -103,23 +141,37 @@ src/main/java/com/shopsphere/
 ├── config/          # WebConfig（拦截器注册）、全局异常处理、导航购物车角标
 ├── interceptor/     # 登录拦截器、管理员拦截器
 ├── controller/      # 用户/商品/购物车/订单 + 后台管理（Admin*）
-├── service/         # 业务层（下单事务、库存扣减）
+├── service/         # 业务层（下单事务、库存扣减、邮件发送 MailService / MailLogWriter）
+├── listener/        # OrderMailListener：事务提交后触发发信
+├── event/           # OrderMailEvent：邮件事件载体（record）
 ├── repository/      # Spring Data JPA 仓库 + 热销统计投影
-├── entity/          # User / Category / Product / CartItem / Order / OrderItem
-└── common/          # 订单/商品状态枚举、角色常量
+├── entity/          # User / Category / Product / CartItem / Order / OrderItem / MailLog
+└── common/          # 订单/商品状态、角色、邮件类型/状态枚举
 src/main/resources/
-├── application.yml  # 数据源支持环境变量注入（DB_URL/DB_USERNAME/DB_PASSWORD）
+├── application.yml  # 数据源 + SMTP 均支持环境变量注入
 ├── data.sql         # 幂等种子数据（INSERT IGNORE，每次启动自动执行）
 └── templates/       # Thymeleaf 页面（前台 + admin + error）
+src/test/
+├── java/.../OrderMailFlowTest.java   # 下单→付款→发货 全链路 + 邮件日志（MockMvc + H2）
+├── java/.../MailServiceTest.java     # 邮件拼装/发送成功/发送失败
+└── resources/application-test.yml    # H2 内存库配置
 Dockerfile           # 多阶段构建（Maven 构建 → JRE 运行，-Xmx256m）
 docker-compose.yml   # app + mysql + 数据卷编排
 ```
 
+## 测试
+
+```bash
+mvn test        # 4 个用例，跑在 H2 内存库上，不依赖本机 MySQL、不发真实邮件
+```
+
+覆盖：注册邮箱校验、下单→付款→发货主链路、每步写一条 `mail_log`、订单详情页渲染、邮件发送成功（SENT）与 SMTP 异常（FAILED）两种结果。
+
 ## 数据库设计
 
-6 张表：`t_user`（用户）、`category`（分类）、`product`（商品）、`cart_item`（购物车，`UNIQUE(user_id, product_id)` 保证同商品一行）、`orders`（订单，收货快照 + 状态机）、`order_item`（订单明细，**商品名与单价快照**，不随商品改价变化）。
+7 张表：`t_user`（用户）、`category`（分类）、`product`（商品）、`cart_item`（购物车，`UNIQUE(user_id, product_id)` 保证同商品一行）、`orders`（订单，收货快照 + 状态机）、`order_item`（订单明细，**商品名与单价快照**，不随商品改价变化）、`mail_log`（邮件发送日志：类型 / 收件人 / SENT·FAILED·SKIPPED / 失败原因）。
 
-关系：`product → category` 多对一；`cart_item / orders → t_user` 多对一；`order_item → orders / product` 多对一。
+关系：`product → category` 多对一；`cart_item / orders → t_user` 多对一；`order_item → orders / product` 多对一；`mail_log.order_id` 逻辑关联订单（**不建外键**——审计日志不该参与订单实体加载）。
 
 ## 部署排错清单
 

@@ -8,6 +8,7 @@ package com.shopsphere.controller;
 
 import com.shopsphere.entity.Order;
 import com.shopsphere.entity.OrderItem;
+import com.shopsphere.repository.MailLogRepository;
 import com.shopsphere.service.CartService;
 import com.shopsphere.service.OrderService;
 import jakarta.servlet.http.HttpSession;
@@ -43,6 +44,12 @@ public class OrderController {
 
     private final OrderService orderService;
     private final CartService cartService;
+
+    /**
+     * [AI辅助 Day8] 邮件发送记录（订单详情页显示"通知邮件已发送至 xxx"）。
+     * 纯查询，按项目惯例直接调 Repository，不隔一层 Service。
+     */
+    private final MailLogRepository mailLogRepository;
 
     /**
      * 结算页 GET /checkout。
@@ -112,6 +119,8 @@ public class OrderController {
               List<OrderItem> items = orderService.getItems(id);
                model.addAttribute("order", order);
               model.addAttribute("items", items);
+              // [AI辅助 Day8] 通知邮件记录：页面据此显示"已发送/未发送 + 邮箱 + 时间"
+              model.addAttribute("mailLogs", mailLogRepository.findByOrderIdOrderByIdAsc(id));
                return "order-detail";
            } catch (IllegalArgumentException e) {
                return "redirect:/orders";     // 订单不存在/不是自己的 → 回列表

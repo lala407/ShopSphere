@@ -46,6 +46,39 @@ spring:
     init:
       mode: always                    # 启动时自动执行 resources/db/ 下的 SQL
 
+  # ============================================================
+  # [AI辅助 Day8] 邮件服务（SMTP）
+  # 用途：下单成功 / 付款成功 / 发货 三个节点给顾客发通知邮件
+  # 账号密码一律从环境变量注入，仓库里不出现真实授权码：
+  #   本地 PowerShell：$env:MAIL_USERNAME="you@qq.com"; $env:MAIL_PASSWORD="授权码"
+  #   Docker：写在 .env 里，由 docker-compose 注入
+  # 未配置 username 时不会报错——MailService 会把记录标成 SKIPPED 并跳过发送
+  # ============================================================
+  mail:
+    host: ${MAIL_HOST:smtp.qq.com}
+    port: ${MAIL_PORT:587}            # 587 = STARTTLS；QQ/163 都支持
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}       # 注意是"授权码"，不是邮箱登录密码
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          # 三个超时都要设：否则 SMTP 卡住会把整个下单请求拖死
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+# 业务侧开关（和上面的 SMTP 账号分开：账号是"怎么发"，这里是"发不发"）
+shopsphere:
+  mail:
+    enabled: ${MAIL_ENABLED:true}                  # 关掉后所有邮件都记为 SKIPPED
+    from-name: ShopSphere 商城                      # 发件人显示名
+    base-url: ${APP_BASE_URL:http://localhost:8080} # 邮件里的"查看订单"链接前缀
+
 # 日志
 logging:
   level:

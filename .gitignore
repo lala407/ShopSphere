@@ -29,3 +29,9 @@ spring-boot-*.log
 
 # Node (if any frontend tooling later)
 node_modules/
+
+# AI 辅助工具工作目录（本地记忆，不入库）
+.workbuddy/
+
+# 历史遗留的嵌套副本目录（内容与根目录重复，避免误提交）
+/ShopSphere/

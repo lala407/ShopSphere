@@ -9,16 +9,20 @@ package com.shopsphere.service;
 
 import com.shopsphere.common.OrderStatus;
 import com.shopsphere.common.ProductStatus;
+import com.shopsphere.common.MailType;
 import com.shopsphere.entity.CartItem;
 import com.shopsphere.entity.Order;
 import com.shopsphere.entity.OrderItem;
 import com.shopsphere.entity.Product;
 import com.shopsphere.entity.User;
+import com.shopsphere.event.OrderMailEvent;
 import com.shopsphere.repository.CartItemRepository;
 import com.shopsphere.repository.OrderItemRepository;
 import com.shopsphere.repository.OrderRepository;
 import com.shopsphere.repository.ProductRepository;
+import com.shopsphere.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +31,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
 /**
  * 订单业务层：下单（事务）、付款、查询。
@@ -55,6 +60,18 @@ public class OrderService {
     private final OrderItemRepository orderItemRepository;
     private final CartItemRepository cartItemRepository;
     private final ProductRepository productRepository;
+
+    /**
+     * [AI辅助 Day8] 下单要发确认邮件，需要拿到用户邮箱，所以这里查一次 User。
+     * 之前为了省一次查询只 new 一个带 id 的 User，现在有邮件需求，省不得了。
+     */
+    private final UserRepository userRepository;
+
+    /**
+     * 事件发布器：下单/付款/发货成功后发布 OrderMailEvent，
+     * 由 OrderMailListener 在**事务提交之后**发邮件（详见该监听器注释）。
+     */
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 下单主流程（步骤 2~7 全部在这一个事务里）。
@@ -98,9 +115,15 @@ public class OrderService {
         // 步骤 3：组装并保存订单（订单号由 AI 实现的 generateOrderNo 生成）
         Order order = new Order();
         order.setOrderNo(generateOrderNo());
-        User u = new User();
-        u.setId(userId);                // 只设 id，不查全量 User
-        order.setUser(u);
+
+        // [AI辅助 Day8] 查真实 User：邮件要发给 user.email。
+        // 先把 email 取到局部变量——后面 deductStock 的 clearAutomatically 会清空持久化上下文，
+        // 届时 user 已脱管，虽然字段还能读，但"提前取出来"语义更清晰、也避免任何懒加载意外。
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("用户不存在，请重新登录"));
+        String userEmail = user.getEmail();
+
+        order.setUser(user);
         order.setTotalAmount(total);    // 下单时固化
         order.setStatus(OrderStatus.CREATED);
         order.setReceiverName(receiverName);
@@ -110,6 +133,8 @@ public class OrderService {
         orderRepository.save(order);    // IDENTITY 主键：save 后 order.getId() 立刻有值
 
         // 步骤 4：写明细（价格快照：存下单时的商品名与单价）
+        // 顺手拼一份"商品 ×数量"摘要，给确认邮件正文用
+        StringBuilder summary = new StringBuilder();
         for (CartItem ci : cartItems) {
             Product p = ci.getProduct();
             OrderItem item = new OrderItem();
@@ -120,6 +145,11 @@ public class OrderService {
             item.setQuantity(ci.getQuantity());
             item.setSubtotal(p.getPrice().multiply(BigDecimal.valueOf(ci.getQuantity())));
             orderItemRepository.save(item);
+
+            if (summary.length() > 0) {
+                summary.append("；");
+            }
+            summary.append(p.getName()).append(" ×").append(ci.getQuantity());
         }
 
         // 步骤 5：条件更新扣库存（affected == 0 说明库存不足）
@@ -132,6 +162,15 @@ public class OrderService {
 
         // 步骤 6：清空购物车
         cartItemRepository.deleteByUserId(userId);
+
+        // 步骤 7：[AI辅助 Day8] 发布"下单成功"邮件事件。
+        // ⚠️ 这里只是"举手说一声"，真正发信发生在**本方法的事务提交之后**
+        //    （OrderMailListener 标注了 @TransactionalEventListener(AFTER_COMMIT)）。
+        //    如果把 mailService.send 直接写在这里，后面任何一步抛异常回滚，
+        //    顾客就会收到一封"下单成功"、库里却没有订单的邮件。
+        eventPublisher.publishEvent(new OrderMailEvent(
+                order.getId(), order.getOrderNo(), userEmail, receiverName,
+                total, summary.toString(), MailType.ORDER_CREATED, LocalDateTime.now()));
 
         return order;
     }
@@ -155,6 +194,9 @@ public class OrderService {
         // 3) 改状态 + 记录付款时间（@Transactional + 脏检查自动 UPDATE，不用 save）
         order.setStatus(OrderStatus.PAID);
         order.setPaidAt(LocalDateTime.now());
+
+        // 4) [AI辅助 Day8] 发布"付款成功"邮件事件（提交后再发，见类顶部说明）
+        publishMailEvent(order, MailType.ORDER_PAID);
     }
 
     /** 我的订单列表（按下单时间倒序）。 */
@@ -199,6 +241,9 @@ public class OrderService {
         }
         order.setStatus(OrderStatus.SHIPPED);
         order.setShippedAt(LocalDateTime.now());
+
+        // [AI辅助 Day8] 发货通知邮件：ex.html 的"发送电子邮件确认发货"就落在这一步
+        publishMailEvent(order, MailType.ORDER_SHIPPED);
     }
 
     /**
@@ -229,6 +274,32 @@ public class OrderService {
         // order 实体已被"脱管"（detached），靠脏检查自动 UPDATE 的前提不存在了。
         // save() 触发 merge，把脱管实体的状态合并回上下文，提交时才发出 UPDATE。
         orderRepository.save(order);
+    }
+
+    /**
+     * [AI辅助 Day8] 发布订单邮件事件（付款 / 发货共用）。
+     *
+     * <p>为什么不直接调 MailService？
+     * 见 {@link OrderMailEvent} 的注释：事务提交后才发、发信失败不影响主流程、业务层不依赖 SMTP。
+     *
+     * <p>商品摘要从 order_item 查（下单/付款/发货三个时点都能用同一套逻辑），
+     * 明细行数少，多这一次查询换来代码复用是划算的。
+     */
+    private void publishMailEvent(Order order, MailType type) {
+        String email = order.getUser() == null ? null : order.getUser().getEmail();
+        String itemSummary = orderItemRepository.findByOrderId(order.getId()).stream()
+                .map(i -> i.getProductName() + " ×" + i.getQuantity())
+                .collect(Collectors.joining("；"));
+
+        eventPublisher.publishEvent(new OrderMailEvent(
+                order.getId(),
+                order.getOrderNo(),
+                email,
+                order.getReceiverName(),
+                order.getTotalAmount(),
+                itemSummary,
+                type,
+                LocalDateTime.now()));
     }
 
     /**

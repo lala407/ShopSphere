@@ -61,6 +61,12 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
             <artifactId>spring-security-crypto</artifactId>
         </dependency>
 
+        <!-- [AI辅助 Day8] 邮件发送：下单/付款/发货通知（ex.html 购买流程"发送电子邮件确认发货"） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
         <!-- MySQL 驱动 -->
         <dependency>
             <groupId>com.mysql</groupId>
@@ -79,6 +85,13 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- [AI辅助 Day8] H2 内存库：集成测试不依赖本机 MySQL，跑完即销毁 -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

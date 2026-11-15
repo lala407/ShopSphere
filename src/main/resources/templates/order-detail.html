@@ -41,6 +41,24 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
              </div>
          </div>
 
+         <!-- ==================== [AI辅助 Day8] 邮件通知记录 ====================
+              数据来源 mail_log 表：每封通知邮件发没发、发给谁、什么时候发的，
+              页面直接显示，老师不登录邮箱也能看到"邮件确认"这条需求的落地证据。
+              SENT/SKIPPED/FAILED 三种状态用不同颜色区分。 -->
+         <div class="alert alert-light border small mb-4"
+              th:if="${mailLogs != null and !mailLogs.isEmpty()}">
+             <div class="fw-bold mb-1">邮件通知</div>
+             <div th:each="m : ${mailLogs}">
+                 <span class="text-muted" th:text="${m.type.label}">类型</span>：
+                 <span th:if="${m.status.name() == 'SENT'}" class="text-success"
+                       th:text="${'已发送至 ' + m.toEmail + '（' + #temporals.format(m.createdAt, 'yyyy-MM-dd HH:mm') + '）'}">已发送</span>
+                 <span th:if="${m.status.name() == 'SKIPPED'}" class="text-secondary"
+                       th:text="${'未发送 —— ' + m.errorMessage}">未发送</span>
+                 <span th:if="${m.status.name() == 'FAILED'}" class="text-danger"
+                       th:text="${'发送失败 —— ' + m.errorMessage}">失败</span>
+             </div>
+         </div>
+
          <table class="table">
              <thead class="table-light">
              <tr>

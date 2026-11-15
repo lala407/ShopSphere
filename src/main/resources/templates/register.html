@@ -30,9 +30,14 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
             </div>
 
             <div class="mb-3">
-                <label for="email" class="form-label">邮箱（选填）</label>
+                <label for="email" class="form-label">邮箱</label>
                 <input type="email" class="form-control" id="email"
-                       name="email" placeholder="name@example.com">
+                       name="email" placeholder="name@example.com" required
+                       maxlength="100">
+                <div class="form-text">
+                    <!-- [AI辅助 Day8] 邮箱改为必填：下单确认、付款成功、发货通知都发到这里 -->
+                    用于接收订单确认与发货通知，请填写常用邮箱
+                </div>
             </div>
 
             <button type="submit" class="btn btn-primary w-100">注册</button>

@@ -28,7 +28,14 @@ public class UserController {
         return "register";
     }
 
-    /** 提交注册：POST /register */
+    /**
+     * 提交注册：POST /register
+     *
+     * <p>[AI辅助 Day8] email 保持 required = false，**校验放到 Service**：
+     * 表单不填时 @RequestParam 直接抛 400（白页），体验差；
+     * Service 里抛 IllegalArgumentException 才能显示"邮箱不能为空"的中文提示。
+     * 这是"前端必填 + 后端兜底"两层校验的标准做法。
+     */
     @PostMapping("/register")
     public String doRegister(@RequestParam String username,
                              @RequestParam String password,

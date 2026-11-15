@@ -8,6 +8,7 @@ package com.shopsphere.controller;
 
 import com.shopsphere.common.OrderStatus;
 import com.shopsphere.entity.Order;
+import com.shopsphere.repository.MailLogRepository;
 import com.shopsphere.repository.OrderRepository;
 import com.shopsphere.service.OrderService;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,9 @@ public class AdminOrderController {
 
     private final OrderRepository orderRepository;
     private final OrderService orderService;
+
+    /** [AI辅助 Day8] 邮件发送记录：后台详情页也能看到"发货通知发没发出去"。 */
+    private final MailLogRepository mailLogRepository;
 
     /**
      * 订单列表 GET /admin/order?status=
@@ -78,6 +82,7 @@ public class AdminOrderController {
                 .orElseThrow(() -> new IllegalArgumentException("订单不存在"));
         model.addAttribute("order", order);
         model.addAttribute("items", orderService.getItems(id));
+        model.addAttribute("mailLogs", mailLogRepository.findByOrderIdOrderByIdAsc(id));
         return "admin/order-detail";
     }
 

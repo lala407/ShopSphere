@@ -48,6 +48,14 @@ services:
       DB_USERNAME: root
       DB_PASSWORD: ${DB_PASSWORD}
       TZ: Asia/Shanghai
+      # [AI辅助 Day8] 邮件通知：不配也能跑（邮件记为 SKIPPED，订单照常创建）
+      MAIL_ENABLED: ${MAIL_ENABLED:-true}
+      MAIL_HOST: ${MAIL_HOST:-smtp.qq.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      # 邮件正文里"查看订单"链接的前缀，部署后改成公网地址
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
     depends_on:
       mysql:
         condition: service_healthy   # 等 MySQL 健康检查通过再启动 app

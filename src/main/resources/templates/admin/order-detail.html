@@ -72,6 +72,20 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
                             onclick="return confirm('取消订单将回补库存，确认取消？')">取消订单</button>
                 </form>
             </div>
+
+            <!-- [AI辅助 Day8] 邮件通知记录：发货后确认"发货邮件到底发出去没有" -->
+            <div class="alert alert-light border small" th:if="${mailLogs != null and !mailLogs.isEmpty()}">
+                <div class="fw-bold mb-1">邮件通知</div>
+                <div th:each="m : ${mailLogs}">
+                    <span class="text-muted" th:text="${m.type.label}">类型</span>：
+                    <span th:if="${m.status.name() == 'SENT'}" class="text-success"
+                          th:text="${m.toEmail + '（' + #temporals.format(m.createdAt, 'MM-dd HH:mm') + '）'}">已发送</span>
+                    <span th:if="${m.status.name() == 'SKIPPED'}" class="text-secondary"
+                          th:text="${'未发送 —— ' + m.errorMessage}">未发送</span>
+                    <span th:if="${m.status.name() == 'FAILED'}" class="text-danger"
+                          th:text="${'发送失败 —— ' + m.errorMessage}">失败</span>
+                </div>
+            </div>
         </div>
 
         <!-- 右：明细（价格快照） -->
