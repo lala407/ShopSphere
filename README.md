@@ -150,6 +150,39 @@ sudo systemctl enable --now docker
 
 无服务器备选：本地 `docker compose up -d` + 内网穿透（cpolar / ngrok）暴露 8080。
 
+## 运行期可用性保障（3 个月可访问）
+
+验收要求「部署后 3 个月内可访问」，这件事拆成三层，每层都有对应的落地手段：
+
+| 层次 | 手段 | 说明 |
+|---|---|---|
+| 进程挂了自动拉起 | `docker-compose.yml` 里 app / mysql 均 `restart: unless-stopped` | 容器异常退出或服务器重启后自动恢复，无需人工干预 |
+| 数据不丢 | 命名卷 `mysql-data` | `docker compose down` 甚至重建容器，订单仍在 |
+| **故障可发现** | `GET /healthz` + GitHub Actions 每 30 分钟探活 | 见下 |
+
+### 探活端点 `/healthz`
+
+```bash
+curl -i http://62.234.217.77:8080/healthz
+# HTTP/1.1 200
+# UP db=9ms
+```
+
+它不只是「Tomcat 还活着」——内部执行一次 `SELECT 1` 打到 MySQL，
+所以**应用与数据库任何一个挂掉都会返回 503**（`DOWN db=unavailable`），
+便于监控脚本直接按状态码判断，不用解析响应体。该端点不返回任何业务数据，
+已在 `WebConfig` 里排除访问日志拦截器，不会污染 `access_log`。
+
+### 云端定时探活
+
+`.github/workflows/uptime.yml`：每 30 分钟（UTC `*/30 * * * *`）从 GitHub 的机器上
+`curl` 一次公网 `/healthz`，连续 3 次失败（间隔 20 秒重试）才判死并让工作流红灯 ——
+GitHub 会把失败结果邮件通知仓库所有者，等于「挂了能收到通知」，且不依赖本人电脑开机。
+
+> 两个已知限制：① GitHub 的定时任务在免费仓库连续 60 天无提交后会自动暂停，
+> 需要在 Actions 页面点一次「Enable workflow」，或改用 UptimeRobot 之类的免费监控（同样打 `/healthz`）；
+> ② 定时任务在高峰期可能延迟数分钟，探活不需要精确，可接受。
+
 ## 项目结构
 
 ```

@@ -58,8 +58,9 @@ public class WebConfig implements WebMvcConfigurer {
         // 拦 /** 但内部只认白名单路径；静态资源与错误页直接排除，省掉无意义的判断开销。
         registry.addInterceptor(accessLogInterceptor)
                 .addPathPatterns("/**")
+                // [P0-3] /healthz 也排除：定时探活每 30 分钟一次，别让它污染访问日志
                 .excludePathPatterns("/css/**", "/js/**", "/images/**",
-                        "/favicon.ico", "/error", "/error/**");
+                        "/favicon.ico", "/healthz", "/error", "/error/**");
     }
 
     /**

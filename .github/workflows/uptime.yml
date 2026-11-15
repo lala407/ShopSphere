@@ -1,0 +1,40 @@
+# ============================================================
+# AI 辅助说明：本文件由 AI 辅助生成/修改
+# 生成内容：云端定时探活 —— 每 30 分钟 curl 一次 /healthz，失败则工作流红灯（GitHub 邮件通知）
+# 人工修改：无
+# 审查状态：待人工审查
+# 设计要点：
+#   1. 监控跑在 GitHub 的机器上，不依赖本人电脑开机、不占服务器资源
+#   2. 打的是 /healthz（含 SELECT 1），能同时发现「应用挂了」和「MySQL 挂了」
+#   3. 连续 3 次才判死（隔 20 秒重试），避免偶发网络抖动误报
+#   4. 失败时把响应体/状态码打进日志，方便回看
+# ============================================================
+name: uptime-check
+
+on:
+  schedule:
+    # UTC 时间；每 30 分钟一次（GitHub 高峰期可能延迟几分钟，探活不需要精确）
+    - cron: "*/30 * * * *"
+  workflow_dispatch: # 手动触发，方便演示
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 探活 http://62.234.217.77:8080/healthz
+        run: |
+          URL="http://62.234.217.77:8080/healthz"
+          for i in 1 2 3; do
+            echo "----- 第 $i 次尝试 $(date -u +%FT%TZ) -----"
+            code=$(curl -sS -m 15 -o body.txt -w '%{http_code}' "$URL" || echo "000")
+            echo "HTTP $code"
+            cat body.txt || true
+            if [ "$code" = "200" ] && grep -q '^UP' body.txt; then
+              echo "服务正常"
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "::error::连续 3 次探活失败，站点可能已宕机：$URL"
+          exit 1
