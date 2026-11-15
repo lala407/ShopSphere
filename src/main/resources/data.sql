@@ -1,6 +1,6 @@
 -- ============================================================
 -- AI 辅助说明：本文件由 AI 辅助生成/修改
--- 生成内容：种子数据——管理员账号 + 4 个分类 + 20 条商品（计划书 3.2 / 3.3）
+-- 生成内容：种子数据——管理员账号 + 演示普通账号 demo + 4 个分类 + 20 条商品（计划书 3.2 / 3.3）
 -- 人工修改：无
 -- 审查状态：待人工审查
 -- 幂等设计：全部 INSERT IGNORE，应用每次重启都会执行本文件，已存在的行自动跳过
@@ -14,6 +14,19 @@ VALUES (1,
         '$2a$10$/pKQwiGDlyJW3TeUijAIp.cULJFuhJ.GS0zO/c8Zv/sWEYpLtfOCS',
         'admin@shopsphere.com',
         'ADMIN',
+        1,
+        NOW());
+
+-- ========== 演示用普通用户（2026-11-15 补） ==========
+-- 课程验收时老师若不想走注册流程，可直接用 demo / demo123 登录下单（README「测试账号」已写明）。
+-- 不显式指定 id：交给 AUTO_INCREMENT，避免与已有库里的主键冲突；
+-- 幂等靠 username 唯一索引，重复执行时 INSERT IGNORE 自动跳过。
+-- 哈希对应明文 demo123（BCrypt，来自项目运行期真实注册的账号，未手写）。
+INSERT IGNORE INTO t_user (username, password, email, role, status, created_at)
+VALUES ('demo',
+        '$2a$10$U6sB9JjWIfW112ChqfFz/usY.E.xuIdIDZJ02eR27kZbDlXALWTTS',
+        '3101362993@qq.com',
+        'CUSTOMER',
         1,
         NOW());
 
