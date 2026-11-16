@@ -217,4 +217,33 @@ class OrderLifecycleTest {
         assertEquals(OrderStatus.CREATED, orderRepository.findById(orderId).orElseThrow().getStatus(),
                 "非 SHIPPED 订单不允许确认收货");
     }
+
+    @Test
+    @DisplayName("订单详情渲染状态时间线：步骤条 + 各节点时间可见（P1-4）")
+    void detailPageShowsTimeline() throws Exception {
+        MockHttpSession session = loginAsUser("lc_user5");
+        createOrder(session, 1);
+        Long orderId = onlyOrder().getId();
+        mockMvc.perform(post("/orders/" + orderId + "/pay").session(session))
+                .andExpect(status().is3xxRedirection());
+        mockMvc.perform(post("/admin/order/" + orderId + "/ship").session(adminSession()))
+                .andExpect(status().is3xxRedirection());
+        mockMvc.perform(post("/orders/" + orderId + "/confirm").session(session))
+                .andExpect(status().is3xxRedirection());
+
+        MvcResult page = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/orders/" + orderId).session(session))
+                .andExpect(status().isOk())
+                .andReturn();
+        String html = page.getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+
+        // 步骤条：四个节点标签 + 容器类都在
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("order-steps"), "应渲染状态步骤条");
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("下单") && html.contains("付款")
+                && html.contains("发货") && html.contains("完成"), "四个节点标签应齐全");
+        // 时间明细：完成过的订单应能看到付款/发货/完成三行时间
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("付款时间"), "应显示付款时间");
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("发货时间"), "应显示发货时间");
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("完成时间"), "应显示完成时间");
+    }
 }

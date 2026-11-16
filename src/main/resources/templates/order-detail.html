@@ -40,6 +40,70 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
                          <p class="mb-1" th:if="${order.remark != null}">备注：<span th:text="${order.remark}">备注</span></p>
                      </div>
                  </div>
+                <hr>
+                <!-- ==================== [AI辅助 P1-4] 状态时间线 ====================
+                     横向步骤条（纯 CSS，不引第三方库）：下单 → 付款 → 发货 → 完成。
+                     每一步"走到没有"由对应的 *At 时间字段判断（有值 = 已到达），
+                     与状态机的写入口一一对应：paidAt（pay）/ shippedAt（ship）/
+                     completedAt（confirm，P1-3 新增）。已取消订单不渲染步骤条，
+                     单独显示红色取消提示。 -->
+                <style>
+                    .order-steps { display: flex; text-align: center; }
+                    .order-steps .step { flex: 1 1 0; position: relative; padding-top: 2px; }
+                    .order-steps .dot { width: 14px; height: 14px; border-radius: 50%;
+                                        background-color: #ced4da; margin: 0 auto 4px auto;
+                                        position: relative; z-index: 1; }
+                    .order-steps .step:not(:last-child)::after { content: '';
+                                        position: absolute; top: 8px; left: 50%;
+                                        width: 100%; height: 2px;
+                                        background-color: #ced4da; z-index: 0; }
+                    .order-steps .step.done .dot { background-color: #198754; }
+                    .order-steps .step.done:not(:last-child)::after { background-color: #198754; }
+                    .order-steps .lbl { font-size: 0.875rem; color: #6c757d; }
+                    .order-steps .step.done .lbl { color: #198754; font-weight: 600; }
+                    .order-steps .time { font-size: 0.75rem; color: #adb5bd; }
+                </style>
+                <div class="order-steps mb-2" th:unless="${order.status.name() == 'CANCELLED'}">
+                    <div class="step done">
+                        <div class="dot"></div>
+                        <div class="lbl">下单</div>
+                        <div class="time" th:text="${#temporals.format(order.createdAt, 'MM-dd HH:mm')}">时间</div>
+                    </div>
+                    <div class="step" th:classappend="${order.paidAt != null} ? 'done'">
+                        <div class="dot"></div>
+                        <div class="lbl">付款</div>
+                        <div class="time" th:if="${order.paidAt != null}"
+                             th:text="${#temporals.format(order.paidAt, 'MM-dd HH:mm')}">时间</div>
+                    </div>
+                    <div class="step" th:classappend="${order.shippedAt != null} ? 'done'">
+                        <div class="dot"></div>
+                        <div class="lbl">发货</div>
+                        <div class="time" th:if="${order.shippedAt != null}"
+                             th:text="${#temporals.format(order.shippedAt, 'MM-dd HH:mm')}">时间</div>
+                    </div>
+                    <div class="step" th:classappend="${order.completedAt != null} ? 'done'">
+                        <div class="dot"></div>
+                        <div class="lbl">完成</div>
+                        <div class="time" th:if="${order.completedAt != null}"
+                             th:text="${#temporals.format(order.completedAt, 'MM-dd HH:mm')}">时间</div>
+                    </div>
+                </div>
+                <!-- 已取消订单：不画进度，直接红字说明 -->
+                <div th:if="${order.status.name() == 'CANCELLED'}" class="text-danger small mb-2">
+                    该订单已取消<span th:if="${order.cancelledAt != null}"
+                        th:text="${'（' + #temporals.format(order.cancelledAt, 'yyyy-MM-dd HH:mm:ss') + '），占用库存已释放'}">，占用库存已释放</span>
+                </div>
+                <!-- 关键节点时间明细（与时间线呼应，方便截图进报告） -->
+                <div class="small text-muted">
+                    <span class="me-3" th:if="${order.paidAt != null}">付款时间：<span
+                            th:text="${#temporals.format(order.paidAt, 'yyyy-MM-dd HH:mm:ss')}">时间</span></span>
+                    <span class="me-3" th:if="${order.shippedAt != null}">发货时间：<span
+                            th:text="${#temporals.format(order.shippedAt, 'yyyy-MM-dd HH:mm:ss')}">时间</span></span>
+                    <span class="me-3" th:if="${order.completedAt != null}">完成时间：<span
+                            th:text="${#temporals.format(order.completedAt, 'yyyy-MM-dd HH:mm:ss')}">时间</span></span>
+                    <span class="me-3" th:if="${order.cancelledAt != null}">取消时间：<span
+                            th:text="${#temporals.format(order.cancelledAt, 'yyyy-MM-dd HH:mm:ss')}">时间</span></span>
+                </div>
              </div>
          </div>
 
