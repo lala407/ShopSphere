@@ -13,6 +13,7 @@ import com.shopsphere.repository.CartItemRepository;
 import com.shopsphere.repository.CategoryRepository;
 import com.shopsphere.repository.OrderItemRepository;
 import com.shopsphere.repository.ProductRepository;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -20,6 +21,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -111,9 +113,36 @@ public class AdminProductController {
      *
      * 表单字段自动绑定成 Product 对象（Spring 按字段名对应：
      * name/price/stock/categoryId/imageUrl/description/status + 隐藏域 id）。
+     *
+     * <p>[P2-2 新增] 服务端校验：此前只有前端 min="0.01" 这层纸糊的防线，
+     * 直接 POST 可以把负价格/负库存写进库。现在两道防线：
+     * ① 实体上的 Bean Validation 注解 + @Valid（消息见 Product 字段注释）；
+     * ② categoryId 是裸 Long 无外键，额外查一次分类是否存在，
+     * 否则商品会挂在一个不存在的分类下（前台按分类筛选永远查不到）。
+     *
+     * <p>校验失败回退到来源表单（新增→/new，编辑→/{id}/edit），flash 带错误信息；
+     * 表单重开后是空白值，但红色提示写明了原因，重新填一遍即可（课程项目不做回填增强）。
      */
     @PostMapping("/save")
-    public String save(Product product, RedirectAttributes redirectAttributes) {
+    public String save(@Valid Product product,
+                       BindingResult bindingResult,
+                       RedirectAttributes redirectAttributes) {
+        if (bindingResult.hasErrors()) {
+            String msg = bindingResult.getFieldErrors().stream()
+                    .map(e -> e.getDefaultMessage())
+                    .distinct()
+                    .collect(Collectors.joining("；"));
+            redirectAttributes.addFlashAttribute("error", msg);
+            return product.getId() == null
+                    ? "redirect:/admin/product/new"
+                    : "redirect:/admin/product/" + product.getId() + "/edit";
+        }
+        if (!categoryRepository.existsById(product.getCategoryId())) {
+            redirectAttributes.addFlashAttribute("error", "所选分类不存在，请重新选择");
+            return product.getId() == null
+                    ? "redirect:/admin/product/new"
+                    : "redirect:/admin/product/" + product.getId() + "/edit";
+        }
         if (product.getId() == null) {
             // 新增：直接保存（createdAt 由 @PrePersist 自动填充）
             productRepository.save(product);

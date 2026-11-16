@@ -12,6 +12,8 @@ import com.shopsphere.entity.Category;
 import com.shopsphere.entity.Product;
 import com.shopsphere.entity.User;
 import com.shopsphere.repository.CategoryRepository;
+import com.shopsphere.repository.OrderItemRepository;
+import com.shopsphere.repository.OrderRepository;
 import com.shopsphere.repository.ProductRepository;
 import com.shopsphere.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,13 +67,21 @@ class AdminCategoryTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private OrderRepository orderRepository;
+
+    @Autowired
+    private OrderItemRepository orderItemRepository;
+
     private Long techId;
     private Long emptyId;
 
     @BeforeEach
     void setUp() {
-        // 外键顺序：商品 → 分类 → 用户（product.categoryId 是裸 Long，无真外键，
-        // 但保持与其它测试一致的清理顺序，先商品后分类）
+        // 外键顺序：明细 → 订单 →（购物车）→ 商品 → 分类 → 用户
+        // 订单引用 user，漏删会导致全量跑时 userRepository.deleteAll() 违反 FK
+        orderItemRepository.deleteAll();
+        orderRepository.deleteAll();
         productRepository.deleteAll();
         categoryRepository.deleteAll();
         userRepository.deleteAll();

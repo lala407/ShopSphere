@@ -11,6 +11,7 @@ package com.shopsphere.entity;
 // [AI辅助] 补充跨包导入：ProductStatus 在 common 包，entity 包用必须显式 import
 import com.shopsphere.common.ProductStatus;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -26,6 +27,12 @@ import java.time.LocalDateTime;
  * - status 我们用字符串 ON_SALE / OFF_SHELF 表示上下架，"删除"实际是改状态（软删除）
  * - category_id 是外键，先别写 @ManyToOne 关联（Day 3 商品浏览时再引，避免现在麻烦），
  *   先用一个 Long categoryId 字段 + @Column(name = "category_id") 即可
+ * <p>
+ * [P2-2 新增] Bean Validation 注解：后台保存表单此前只有前端 min="0.01" 这层纸糊的校验，
+ * 直接 POST 可以把负价格/负库存写进库。注解加在实体上有一石二鸟的效果——
+ * ① MVC 层 @Valid 绑定时拦截；② JPA 的 PrePersist/PreUpdate 事件也会再校验一次
+ * （绕过 Controller 直写 Repository 的代码同样拦得住）。
+ * 消息文案直接面向管理员，BindingResult 会把 default message 原样放进 flash 提示。
  */
 @Entity
 @Table(name = "product")
@@ -44,24 +51,35 @@ public class Product {
     private  Long id;
 
     // 2) name         VARCHAR(100) NOT NULL
+    @NotBlank(message = "商品名不能为空")
+    @Size(max = 100, message = "商品名最长 100 字")
     @Column(name = "name",length = 100,nullable = false)
     private  String name;
     // 3) description  TEXT NULL               —— 描述，@Column(columnDefinition = "TEXT")
+    @Size(max = 2000, message = "商品描述最长 2000 字")
     @Column(name = "description",columnDefinition = "TEXT")
     private String description;
     // 4) price        DECIMAL(10,2) NOT NULL  —— 金额！BigDecimal！
+    @NotNull(message = "价格不能为空")
+    @DecimalMin(value = "0.01", message = "价格必须大于 0")
+    @Digits(integer = 8, fraction = 2, message = "价格最多 8 位整数 2 位小数")
     @Column(name = "price",nullable = false,precision = 10,scale = 2)
     private BigDecimal price;
     // 5) stock        INT NOT NULL DEFAULT 0
+    @NotNull(message = "库存不能为空")
+    @Min(value = 0, message = "库存不能为负数")
     @Column(name = "stock", nullable = false)
     private Integer stock = 0;
     // 6) category_id  BIGINT NOT NULL          —— 先写 Long categoryId
+    @NotNull(message = "请选择分类")
     @Column(name = "category_id", nullable = false)
     private Long categoryId;
     // 7) image_url    VARCHAR(255) NULL
+    @Size(max = 255, message = "图片地址最长 255 字符")
     @Column(name = "image_url", length = 255)
     private String imageUrl;
     // 8) status       VARCHAR(20) NOT NULL DEFAULT 'ON_SALE'
+    @NotNull(message = "请选择商品状态")
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private ProductStatus status = ProductStatus.ON_SALE;
