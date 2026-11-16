@@ -195,7 +195,15 @@ public class OrderService {
         order.setStatus(OrderStatus.PAID);
         order.setPaidAt(LocalDateTime.now());
 
-        // 4) [AI辅助 Day8] 发布"付款成功"邮件事件（提交后再发，见类顶部说明）
+        // 4) [AI辅助 P1-2 修复] 付款成功累加销量。
+        //    口径：前台「已售 N 件」= 已付款成交量，与统计页热销 Top5 一致；
+        //    放在 pay() 里而不是下单时，是因为待付款订单可能被取消，下单口径会虚高。
+        //    状态改成功 + 销量累加同在 pay 的这一个事务里：要么一起提交，要么一起回滚。
+        for (OrderItem item : orderItemRepository.findByOrderId(orderId)) {
+            productRepository.incrementSales(item.getProductId(), item.getQuantity());
+        }
+
+        // 5) [AI辅助 Day8] 发布"付款成功"邮件事件（提交后再发，见类顶部说明）
         publishMailEvent(order, MailType.ORDER_PAID);
     }
 
@@ -263,9 +271,17 @@ public class OrderService {
         if (order.getStatus() != OrderStatus.CREATED && order.getStatus() != OrderStatus.PAID) {
             throw new IllegalArgumentException("当前状态不允许取消（仅待付款/已付款订单可取消）");
         }
+        // [AI辅助 P1-2 修复] 先记下取消前的状态：销量只在付款时累加过，
+        // 所以只有取消"已付款"订单才需要把销量减回去；待付款订单从没加过，不动。
+        boolean wasPaid = order.getStatus() == OrderStatus.PAID;
+
         // 逐条明细回补库存（无条件 UPDATE，见 ProductRepository.restoreStock）
         for (OrderItem item : orderItemRepository.findByOrderId(orderId)) {
             productRepository.restoreStock(item.getProductId(), item.getQuantity());
+            if (wasPaid) {
+                // 与付款时的 incrementSales 对称回退（CASE WHEN 兜底防负数）
+                productRepository.decrementSales(item.getProductId(), item.getQuantity());
+            }
         }
         order.setStatus(OrderStatus.CANCELLED);
         order.setCancelledAt(LocalDateTime.now());

@@ -97,4 +97,39 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
              WHERE p.id = :pid
             """)
     int restoreStock(@Param("pid") Long productId, @Param("qty") int quantity);
+
+    /**
+     * [AI辅助 P1-2 修复] 付款成功后累加销量：sales = sales + qty。
+     *
+     * <p>口径：前台「已售 N 件」 = 已付款成交量，与后台统计页「热销 Top5」
+     * （order_item 按 PAID_STATUSES 聚合）保持一致。
+     * 为什么不在下单（扣库存）时累加？——待付款订单随时可能被取消，
+     * 下单口径会让「已售」虚高且与 Top5 打架；付款口径天然排除未成交订单。
+     *
+     * <p>与 restoreStock 一样是"无条件更新"——累加不存在"加不进去"的情况。
+     * 注意这里**没有**开 clearAutomatically：pay() 紧接着还要读 order.user
+     * 发邮件事件，清掉持久化上下文有懒加载风险，没必要冒这个险。
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            UPDATE Product p
+               SET p.sales = p.sales + :qty
+             WHERE p.id = :pid
+            """)
+    int incrementSales(@Param("pid") Long productId, @Param("qty") int quantity);
+
+    /**
+     * [AI辅助 P1-2 修复] 已付款订单取消时回退销量（与 incrementSales 对称）。
+     *
+     * <p>CASE WHEN 防负数：正常流程里 sales 只在付款时加过、取消时减回去，
+     * 不会为负；但 history 上可能存在"修复前付款、修复后取消"的订单，
+     * sales 没加过却要减，这里兜底减到 0 为止。
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            UPDATE Product p
+               SET p.sales = CASE WHEN p.sales >= :qty THEN p.sales - :qty ELSE 0 END
+             WHERE p.id = :pid
+            """)
+    int decrementSales(@Param("pid") Long productId, @Param("qty") int quantity);
 }
