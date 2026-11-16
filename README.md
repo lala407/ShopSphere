@@ -230,6 +230,8 @@ mvn test        # 8 个用例，跑在 H2 内存库上，不依赖本机 MySQL�
 | app 反复重启、`exit code 137` | OOM：确认 Dockerfile 的 `-Xmx256m` 生效；MySQL buffer 已调至 128M |
 | app 起不来、日志连不上数据库 | `docker compose logs mysql` 确认 mysql 健康；确认 `.env` 存在且 DB_PASSWORD 无误 |
 | 页面 500 / 改了不生效 | 看 `docker compose logs -f app` 栈顶第一行 Caused by |
+| 后台「分类管理」404、「统计报表」500，前台和其他后台页正常 | 典型「新模板 + 旧类」错配：应用起得早、代码更新在后。Thymeleaf 关了缓存会立刻读新模板（导航里已经出现「分类管理」），但 JVM 里的 Controller 还是旧的那份，于是新页面没接口 → 404、统计页新模板取不到新 model 属性 → 500。**重启即可**：本地停掉旧进程再 `.\scripts\run-local.ps1`；服务器上 `docker compose up -d --build` 重建镜像（镜像里模板和 class 是同一份源码编译的，不会再错配） |
+| 公网 `Connection refused`（不是 502/超时） | 没有进程在听 8080：`docker compose ps` 看 app 是否 Up、`docker compose logs --tail=50 app` 看是不是启动失败（常见两类：`Schema-validation: missing column` 说明库结构比实体旧；`port is already allocated` 说明有旧 java 进程或旧容器占着 8080） |
 | 公网访问不通 | 云控制台安全组放行 8080；`curl http://localhost:8080` 先在服务器本机验证 |
 | 重启后数据丢了 | 检查是否用了 `docker compose down -v`（`-v` 会删卷！）；正常 `down` 不删数据 |
 
