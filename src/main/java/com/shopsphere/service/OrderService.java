@@ -266,8 +266,32 @@ public class OrderService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void cancel(Long orderId) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("订单不存在"));
+        // [AI辅助 P1-3] 状态流转逻辑抽到 doCancel，后台 / 用户取消共用（见下）
+        doCancel(orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("订单不存在")));
+    }
+
+    /**
+     * [AI辅助 P1-3] 用户取消自己的待付款订单：仅 CREATED → CANCELLED，回补库存。
+     *
+     * <p>为什么用户不能取消已付款订单？——钱已经付了，现实里要走退款流程，
+     * MVP 没有支付渠道对接，退不了钱，所以已付款订单的取消收口到后台管理员
+     * （cancel(orderId)），用户侧只放开"还没付钱"的 CREATED。
+     *
+     * <p>⚠️ doCancel 是同类私有方法、不走代理——事务由本方法（public + @Transactional）
+     * 开启，内部调用在同一个事务里执行，符合类注释第 2 条的用法。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelByUser(Long userId, Long orderId) {
+        Order order = getOwnedOrder(userId, orderId);   // 归属校验：只能取消自己的
+        if (order.getStatus() != OrderStatus.CREATED) {
+            throw new IllegalArgumentException("只有待付款订单可以自行取消，已付款订单请联系客服");
+        }
+        doCancel(order);
+    }
+
+    /** 取消的公共实现（后台/用户两路共用）：回补库存 +（已付款时）回退销量。 */
+    private void doCancel(Order order) {
         if (order.getStatus() != OrderStatus.CREATED && order.getStatus() != OrderStatus.PAID) {
             throw new IllegalArgumentException("当前状态不允许取消（仅待付款/已付款订单可取消）");
         }
@@ -276,7 +300,7 @@ public class OrderService {
         boolean wasPaid = order.getStatus() == OrderStatus.PAID;
 
         // 逐条明细回补库存（无条件 UPDATE，见 ProductRepository.restoreStock）
-        for (OrderItem item : orderItemRepository.findByOrderId(orderId)) {
+        for (OrderItem item : orderItemRepository.findByOrderId(order.getId())) {
             productRepository.restoreStock(item.getProductId(), item.getQuantity());
             if (wasPaid) {
                 // 与付款时的 incrementSales 对称回退（CASE WHEN 兜底防负数）
@@ -290,6 +314,39 @@ public class OrderService {
         // order 实体已被"脱管"（detached），靠脏检查自动 UPDATE 的前提不存在了。
         // save() 触发 merge，把脱管实体的状态合并回上下文，提交时才发出 UPDATE。
         orderRepository.save(order);
+    }
+
+    /**
+     * [AI辅助 P1-3] 确认收货（后台代操作）：SHIPPED → COMPLETED，写 completed_at。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void confirm(Long orderId) {
+        doConfirm(orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("订单不存在")));
+    }
+
+    /**
+     * [AI辅助 P1-3] 用户确认收货：SHIPPED → COMPLETED，写 completed_at。
+     *
+     * <p>这是状态机 COMPLETED 状态的**唯一入口**（修复前 COMPLETED 没有任何流转可达，
+     * "查看订单状态"只能看到徽章、没有闭环）。收货是买家的动作，所以走归属校验。
+     *
+     * <p>不发确认收货邮件：MailType 只定义了下单/付款/发货三种，收货是
+     * "买家自己点的"，再发一封通知意义不大，MVP 不扩。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void confirmByUser(Long userId, Long orderId) {
+        doConfirm(getOwnedOrder(userId, orderId));      // 归属校验：只能确认自己的
+    }
+
+    /** 确认收货的公共实现（后台/用户两路共用）。 */
+    private void doConfirm(Order order) {
+        if (order.getStatus() != OrderStatus.SHIPPED) {
+            throw new IllegalArgumentException("只有已发货订单可以确认收货");
+        }
+        order.setStatus(OrderStatus.COMPLETED);
+        order.setCompletedAt(LocalDateTime.now());
+        // 不调 @Modifying 查询、持久化上下文没被清，脏检查自动 UPDATE，不用 save
     }
 
     /**

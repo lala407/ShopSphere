@@ -51,6 +51,9 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
                         th:text="${#temporals.format(order.paidAt, 'yyyy-MM-dd HH:mm:ss')}"></span></small></p>
                 <p class="mb-1 text-muted" th:if="${order.shippedAt != null}"><small>发货：<span
                         th:text="${#temporals.format(order.shippedAt, 'yyyy-MM-dd HH:mm:ss')}"></span></small></p>
+                <!-- [AI辅助 P1-3] 完成时间：确认收货（SHIPPED → COMPLETED）后才有值 -->
+                <p class="mb-1 text-muted" th:if="${order.completedAt != null}"><small>完成：<span
+                        th:text="${#temporals.format(order.completedAt, 'yyyy-MM-dd HH:mm:ss')}"></span></small></p>
                 <p class="mb-1 text-muted" th:if="${order.cancelledAt != null}"><small>取消：<span
                         th:text="${#temporals.format(order.cancelledAt, 'yyyy-MM-dd HH:mm:ss')}"></span></small></p>
             </div>
@@ -61,6 +64,12 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
                       th:action="@{/admin/order/{id}/ship(id=${order.id})}" method="post">
                     <button type="submit" class="btn btn-primary"
                             onclick="return confirm('确认发货？')">发货</button>
+                </form>
+                <!-- [AI辅助 P1-3] 管理员代确认收货（买家没点时后台兜底，COMPLETED 入口） -->
+                <form th:if="${order.status.name() == 'SHIPPED'}"
+                      th:action="@{/admin/order/{id}/confirm(id=${order.id})}" method="post">
+                    <button type="submit" class="btn btn-success"
+                            onclick="return confirm('确认该订单已收货、订单完成？')">确认收货</button>
                 </form>
                 <form th:if="${order.status.name() == 'CREATED' or order.status.name() == 'PAID'}"
                       th:action="@{/admin/order/{id}/cancel(id=${order.id})}" method="post">

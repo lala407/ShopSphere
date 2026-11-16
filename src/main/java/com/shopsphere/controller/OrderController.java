@@ -141,4 +141,36 @@ public class OrderController {
            return "redirect:/orders/" + id;
 
     }
+
+    /**
+     * [AI辅助 P1-3] 用户取消自己的待付款订单 POST /orders/{id}/cancel。
+     * Service 侧校验：订单归属 + 只有 CREATED 可自行取消（已付款走后台）。
+     */
+    @PostMapping("/orders/{id}/cancel")
+    public String cancel(@PathVariable Long id, HttpSession session, RedirectAttributes redirectAttributes) {
+        Long userId = (Long) session.getAttribute("userId");
+        try {
+            orderService.cancelByUser(userId, id);
+            redirectAttributes.addFlashAttribute("msg", "订单已取消，库存已回补");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/orders/" + id;
+    }
+
+    /**
+     * [AI辅助 P1-3] 用户确认收货 POST /orders/{id}/confirm（SHIPPED → COMPLETED）。
+     * 这是状态机里 COMPLETED 的唯一入口（P1-3 修复前该状态无任何流转可达）。
+     */
+    @PostMapping("/orders/{id}/confirm")
+    public String confirm(@PathVariable Long id, HttpSession session, RedirectAttributes redirectAttributes) {
+        Long userId = (Long) session.getAttribute("userId");
+        try {
+            orderService.confirmByUser(userId, id);
+            redirectAttributes.addFlashAttribute("msg", "已确认收货，感谢购买！");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/orders/" + id;
+    }
 }

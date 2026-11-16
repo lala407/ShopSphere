@@ -115,4 +115,19 @@ public class AdminOrderController {
         }
         return "redirect:/admin/order/" + id;
     }
+
+    /**
+     * [AI辅助 P1-3] 确认收货（管理员代操作）POST /admin/order/{id}/confirm
+     * （SHIPPED → COMPLETED，写 completed_at）。买家没点确认时后台可以代为收货。
+     */
+    @PostMapping("/{id}/confirm")
+    public String confirm(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        try {
+            orderService.confirm(id);
+            redirectAttributes.addFlashAttribute("msg", "已确认收货（订单完成）");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/order/" + id;
+    }
 }

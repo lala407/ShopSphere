@@ -86,6 +86,10 @@ public class Order {
     @Column(name = "shipped_at")
     private LocalDateTime shippedAt;
 
+    /** [AI辅助 P1-3] 确认收货时间（SHIPPED → COMPLETED 时写入）。 */
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
 
