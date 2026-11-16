@@ -12,6 +12,11 @@ import com.shopsphere.repository.MailLogRepository;
 import com.shopsphere.repository.OrderRepository;
 import com.shopsphere.service.OrderService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,7 +26,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.util.List;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * 后台·订单管理（计划书 3.6）：列表（按状态筛选）/ 详情 / 发货 / 取消。
@@ -43,27 +49,55 @@ public class AdminOrderController {
     /** [AI辅助 Day8] 邮件发送记录：后台详情页也能看到"发货通知发没发出去"。 */
     private final MailLogRepository mailLogRepository;
 
+    /** [AI辅助 P1-6] 后台列表每页条数，与商品管理保持一致（10 条/页）。 */
+    private static final int PAGE_SIZE = 10;
+
     /**
-     * 订单列表 GET /admin/order?status=
+     * 订单列表 GET /admin/order?status=&kw=&from=&to=&page=
      *
-     * @param status 状态筛选，null = 全部。
-     *               Spring 会自动把 ?status=PAID 这样的字符串转成枚举，不用手写 valueOf。
+     * <p>[AI辅助 P1-6 修复] 原实现 findAll 全量加载（订单上几百条就卡），
+     * 现改为 {@link OrderRepository#search} 的多条件分页查询：
+     * <ul>
+     *   <li>status —— 状态筛选，null = 全部。Spring 自动把 ?status=PAID 转成枚举；</li>
+     *   <li>kw     —— 关键字，模糊匹配 订单号 / 收货人 / 下单用户名，null = 不过滤；</li>
+     *   <li>from/to—— 下单日期区间（yyyy-MM-dd，由 {@code @DateTimeFormat} 解析），null = 不限；</li>
+     *   <li>page   —— 页码，从 0 开始（URL 里是给人看的 1-based，模板里 +1 显示）。</li>
+     * </ul>
      *
-     * model 需要三样：
-     *   orders   —— List&lt;Order&gt;（status 为 null 查全部、否则按状态查；都按下单时间倒序，
-     *               两个查询方法由你在 OrderRepository 的 TODO 3 / TODO 4 手写）
-     *   statuses —— OrderStatus.values()（页面渲染筛选下拉框用）
-     *   status   —— 当前选中的状态（页面回显选中项；没选就是 null）
+     * <p>model 需要：
+     *   pageData —— Page&lt;Order&gt;（分页条读 totalPages / totalElements / first / last）
+     *   statuses —— OrderStatus.values()（筛选下拉框）
+     *   status / kw / from / to —— 回显，翻页链接要把这些条件带下去，否则一翻页筛选就丢了
      */
     @GetMapping
-    public String list(@RequestParam(required = false) OrderStatus status, Model model) {
-        // status 为 null 查全部，否则按状态查；都按下单时间倒序
-        List<Order> orders = (status == null)
-                ? orderRepository.findAllByOrderByCreatedAtDesc()
-                : orderRepository.findByStatusOrderByCreatedAtDesc(status);
-        model.addAttribute("orders", orders);
+    public String list(@RequestParam(required = false) OrderStatus status,
+                       @RequestParam(required = false) String kw,
+                       @RequestParam(required = false)
+                       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                       @RequestParam(required = false)
+                       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+                       @RequestParam(defaultValue = "0") int page,
+                       Model model) {
+
+        // 1) 空字符串当没填（表单没填时提交的是 kw=，不是 null）
+        String keyword = (kw == null || kw.isBlank()) ? null : kw.trim();
+
+        // 2) 日期 → 时间区间：左闭右开，to 当天 23:59:59 的订单也要能查到
+        LocalDateTime fromTs = (from == null) ? null : from.atStartOfDay();
+        LocalDateTime toTs = (to == null) ? null : to.plusDays(1).atStartOfDay();
+
+        // 3) 分页：第 N 页、每页 10 条、下单时间倒序（同秒下单用 id 倒序兜底，保证顺序稳定）
+        Pageable pageable = PageRequest.of(Math.max(page, 0), PAGE_SIZE,
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
+        Page<Order> pageData = orderRepository.search(status, keyword, fromTs, toTs, pageable);
+
+        // 4) 塞 model（条件参数原样回传，模板里的翻页链接要用）
+        model.addAttribute("pageData", pageData);
         model.addAttribute("statuses", OrderStatus.values());   // 筛选下拉框
         model.addAttribute("status", status);                    // 回显选中项
+        model.addAttribute("kw", keyword);
+        model.addAttribute("from", from);
+        model.addAttribute("to", to);
         return "admin/order-list";
     }
 

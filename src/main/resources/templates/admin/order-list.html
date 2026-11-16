@@ -1,14 +1,16 @@
 <!-- ============================================================
 AI 辅助说明：本文件由 AI 辅助生成/修改
-生成内容：admin/order-list.html —— 后台订单列表（按状态筛选）（复杂后台页面，计划书 3.6 AI 范围）
+生成内容：admin/order-list.html —— 后台订单列表（状态 + 关键字 + 日期区间筛选 + 分页）（复杂后台页面，计划书 3.6 AI 范围）
 人工修改：无
 审查状态：待人工审查
 ============================================================ -->
 <!--
   依赖的 model（AdminOrderController.list 提供）：
-    orders   —— List<Order>
+    pageData —— Page<Order>（分页条读 totalPages / totalElements / first / last / number）
     statuses —— OrderStatus.values()（筛选下拉框）
     status   —— 当前选中状态（回显；null = 全部）
+    kw       —— 关键字（订单号 / 收货人 / 用户名）
+    from / to—— 下单日期区间（LocalDate，yyyy-MM-dd）
 -->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
@@ -22,19 +24,46 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
     <div th:if="${msg}" class="alert alert-success" th:text="${msg}"></div>
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="mb-0">订单管理</h4>
-        <!-- 状态筛选：GET 表单，条件体现在 URL 上（/admin/order?status=PAID），可收藏可刷新 -->
-        <form method="get" action="/admin/order" class="d-flex gap-2">
-            <select name="status" class="form-select" style="width:auto">
-                <option value="">全部状态</option>
-                <!-- th:selected 回显：s 是枚举，status 也是枚举，直接 == 比较 -->
-                <option th:each="s : ${statuses}" th:value="${s}" th:text="${s.label}"
-                        th:selected="${s == status}"></option>
-            </select>
-            <button type="submit" class="btn btn-outline-primary">筛选</button>
-        </form>
-    </div>
+    <h4 class="mb-3">订单管理</h4>
+
+    <!--
+      筛选：GET 表单，条件全部体现在 URL 上（/admin/order?status=PAID&kw=ORD&from=...），
+      可收藏、可刷新、可翻页——不会像 POST 那样一刷新就重提交。
+    -->
+    <form method="get" action="/admin/order" class="card card-body bg-light mb-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label for="kw" class="form-label mb-1"><small>关键字</small></label>
+                <input type="text" id="kw" name="kw" class="form-control form-control-sm"
+                       placeholder="订单号 / 收货人 / 用户名"
+                       th:value="${kw}" maxlength="50">
+            </div>
+            <div class="col-md-2">
+                <label for="status" class="form-label mb-1"><small>状态</small></label>
+                <select id="status" name="status" class="form-select form-select-sm">
+                    <option value="">全部状态</option>
+                    <!-- th:selected 回显：s 是枚举，status 也是枚举，直接 == 比较 -->
+                    <option th:each="s : ${statuses}" th:value="${s}" th:text="${s.label}"
+                            th:selected="${s == status}"></option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="from" class="form-label mb-1"><small>下单起</small></label>
+                <input type="date" id="from" name="from" class="form-control form-control-sm"
+                       th:value="${from}">
+            </div>
+            <div class="col-md-2">
+                <label for="to" class="form-label mb-1"><small>下单止</small></label>
+                <input type="date" id="to" name="to" class="form-control form-control-sm"
+                       th:value="${to}">
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-primary">筛选</button>
+                <!-- 重置 = 回到不带任何参数的列表页 -->
+                <a href="/admin/order" class="btn btn-sm btn-outline-secondary">重置</a>
+            </div>
+        </div>
+    </form>
 
     <table class="table table-hover align-middle">
         <thead class="table-light">
@@ -44,7 +73,8 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
         </tr>
         </thead>
         <tbody>
-        <tr th:each="o : ${orders}">
+        <!-- 分页后遍历的是 pageData.content（当前页 10 条），不是全量 List -->
+        <tr th:each="o : ${pageData.content}">
             <td><small th:text="${o.orderNo}">ORD...</small></td>
             <td th:text="${o.user.username}">用户</td>
             <td th:text="${o.receiverName}">收货人</td>
@@ -63,11 +93,43 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
                    class="btn btn-sm btn-outline-primary">详情</a>
             </td>
         </tr>
-        <tr th:if="${orders.empty}">
+        <tr th:if="${pageData.empty}">
             <td colspan="7" class="text-center text-muted py-4">没有符合条件的订单</td>
         </tr>
         </tbody>
     </table>
+
+    <!--
+      分页条：路径 /admin/order 与前台 "/" 不同，所以这里内联一个（不复用 fragments/pagination）。
+      关键点：每个翻页链接都把 status / kw / from / to 一起带上，
+      否则一翻页筛选条件就丢了（用户会以为筛选失效）。Thymeleaf 会自动省略值为 null 的参数。
+    -->
+    <nav th:if="${pageData.totalPages > 1}" aria-label="订单分页">
+        <ul class="pagination justify-content-center mt-3">
+            <li class="page-item" th:classappend="${pageData.first} ? 'disabled'">
+                <a class="page-link"
+                   th:href="@{/admin/order(page=${pageData.number - 1}, status=${status}, kw=${kw}, from=${from}, to=${to})}">上一页</a>
+            </li>
+            <li class="page-item"
+                th:each="i : ${#numbers.sequence(0, pageData.totalPages - 1)}"
+                th:classappend="${i == pageData.number} ? 'active'">
+                <a class="page-link"
+                   th:href="@{/admin/order(page=${i}, status=${status}, kw=${kw}, from=${from}, to=${to})}"
+                   th:text="${i + 1}">1</a>
+            </li>
+            <li class="page-item" th:classappend="${pageData.last} ? 'disabled'">
+                <a class="page-link"
+                   th:href="@{/admin/order(page=${pageData.number + 1}, status=${status}, kw=${kw}, from=${from}, to=${to})}">下一页</a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- 汇总：一页也显示，让管理员随时知道"当前筛选下共多少单" -->
+    <p class="text-center text-muted" th:if="${pageData.totalElements > 0}">
+        <small>第 <span th:text="${pageData.number + 1}">1</span> /
+            <span th:text="${pageData.totalPages}">1</span> 页，
+            共 <span th:text="${pageData.totalElements}">0</span> 条订单</small>
+    </p>
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>

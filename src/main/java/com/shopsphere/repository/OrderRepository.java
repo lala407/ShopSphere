@@ -8,11 +8,14 @@ package com.shopsphere.repository;
 
 import com.shopsphere.common.OrderStatus;
 import com.shopsphere.entity.Order;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -28,10 +31,58 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     // [手写 Day6] TODO 3：后台订单列表 —— 查全部订单，按下单时间倒序
     //   （findAllBy 后面直接跟 OrderBy，中间没有条件字段）
+    //   ⚠️ [P1-6 后] 后台列表已改用下方 search(...) 分页查询（订单多了全量加载会卡）；
+    //   这两个全量方法保留给「导出 / 统计脚本」这类确实需要全部数据的场景。
     List<Order> findAllByOrderByCreatedAtDesc();
 
     // [手写 Day6] TODO 4：后台订单筛选 —— 按状态查订单，按下单时间倒序
     List<Order> findByStatusOrderByCreatedAtDesc(OrderStatus status);
+
+    // ==========================================================
+    // [AI辅助 P1-6 修复] 后台订单列表：多条件 + 分页
+    // ==========================================================
+
+    /**
+     * 后台订单分页查询：状态 / 关键字 / 下单时间范围，四个条件都可为 null（= 不过滤）。
+     *
+     * <p>写法沿用 {@code ProductRepository.searchOnSale} 的核心技巧
+     * {@code (:param IS NULL OR 字段 = :param)}：一条 JPQL 覆盖 2^4 = 16 种筛选组合，
+     * 不用按组合写 16 个方法。参数为 null 时该条件恒真、自动失效。
+     *
+     * <p>关键字模糊匹配三个字段：订单号 / 收货人 / 下单用户名——
+     * 管理员手上可能只有一个手机号截图里的单号，也可能只记得收货人姓名。
+     * 隐式 join {@code o.user.username} 走的是内连接，因为 user 是
+     * {@code optional = false}（每张订单必然有下单人），不会漏数据。
+     *
+     * <p>时间范围用"左闭右开"：{@code createdAt >= from} 且 {@code createdAt < to}。
+     * 调用方把用户选的截止日期 +1 天再传进来，这样 {@code 2026-11-16} 这一天
+     * 23:59:59 的订单也能被包含——如果用 {@code <= to} 且 to 是当天 00:00，
+     * 当天下的单会全部查不到（日期筛选最经典的 off-by-one）。
+     *
+     * <p>排序不写在 JPQL 里，交给 Pageable 的 Sort（createdAt desc, id desc），
+     * 这样同一个查询既能用于列表，也能复用成"只查条数"的 count 查询。
+     *
+     * @param status   订单状态，null = 全部状态
+     * @param kw       关键字（订单号/收货人/用户名），null = 不过滤
+     * @param from     下单时间下限（含），null = 不限
+     * @param to       下单时间上限（不含），null = 不限
+     * @param pageable 分页 + 排序
+     */
+    @Query("""
+            SELECT o FROM Order o
+            WHERE (:status IS NULL OR o.status = :status)
+              AND (:kw IS NULL
+                   OR o.orderNo LIKE CONCAT('%', :kw, '%')
+                   OR o.receiverName LIKE CONCAT('%', :kw, '%')
+                   OR o.user.username LIKE CONCAT('%', :kw, '%'))
+              AND (:from IS NULL OR o.createdAt >= :from)
+              AND (:to   IS NULL OR o.createdAt <  :to)
+            """)
+    Page<Order> search(@Param("status") OrderStatus status,
+                       @Param("kw") String kw,
+                       @Param("from") LocalDateTime from,
+                       @Param("to") LocalDateTime to,
+                       Pageable pageable);
 
     // ==========================================================
     // [AI完整实现 Day6] 统计查询（计划书 3.6：统计 SQL 由 AI 实现 + 讲解）
