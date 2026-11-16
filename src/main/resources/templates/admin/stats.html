@@ -2,14 +2,19 @@
 AI 辅助说明：本文件由 AI 辅助生成/修改
 生成内容：admin/stats.html —— 后台统计报表（复杂后台页面，计划书 3.6 AI 范围）
 人工修改：无
+AI 增强：P1-9 新增日期筛选 / 每日销售额 CSS 条形图 / 分类销售占比 / CSV 导出
 审查状态：待人工审查
 ============================================================ -->
 <!--
   依赖的 model（AdminStatsController.stats 提供）：
-    orderCount  —— 订单总数
-    paidCount   —— 已付款订单数
-    totalSales  —— 总销售额（BigDecimal）
-    hotProducts —— List<HotProductStat>（接口投影：productId / productName / totalQty）
+    orderCount     —— 订单总数
+    paidCount      —— 已付款订单数
+    totalSales     —— 总销售额（BigDecimal）
+    hotProducts    —— List<HotProductStat>（接口投影：productId / productName / totalQty）
+    from / to      —— 趋势区间（LocalDate，回显到日期筛选表单）
+    dailyBars      —— List<DailySalesBar>：date / sales / orderCount / widthPercent（缺成交日已补零）
+    rangeSales / rangeOrders —— 区间合计
+    categoryShares —— List<CategoryShare>：name / sales / percent / widthPercent / totalQty
 -->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
@@ -20,7 +25,12 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
 <main class="container">
     <ul th:replace="~{fragments/admin-nav :: tabs('stats')}"></ul>
 
-    <h4 class="mb-3">统计报表</h4>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">统计报表</h4>
+        <!-- P1-9 导出 CSV：与页面同一段数据源，口径一致；带上当前筛选区间 -->
+        <a th:href="@{/admin/stats/export.csv(from=${from}, to=${to})}"
+           class="btn btn-outline-success btn-sm">⬇ 导出 CSV</a>
+    </div>
 
     <!-- 三个指标卡：数字大、标题小，一眼看清 -->
     <div class="row g-3 mb-4">
@@ -41,6 +51,73 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
                 <div class="text-muted">总销售额</div>
                 <div class="display-6 fw-bold text-danger" th:text="${'¥' + totalSales}">¥0</div>
             </div>
+        </div>
+    </div>
+
+    <!-- P1-9 日期筛选：表单提交 from/to，快捷链接用 range 参数，两种都不用 JS -->
+    <div class="card card-body bg-light mb-4">
+        <form th:action="@{/admin/stats}" method="get" class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label for="from" class="form-label mb-0">开始日期</label>
+                <input type="date" class="form-control" id="from" name="from" th:value="${from}">
+            </div>
+            <div class="col-auto">
+                <label for="to" class="form-label mb-0">结束日期</label>
+                <input type="date" class="form-control" id="to" name="to" th:value="${to}">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">查看趋势</button>
+            </div>
+            <div class="col-auto ms-md-auto text-nowrap">
+                <a class="btn btn-outline-secondary btn-sm"
+                   th:href="@{/admin/stats(range='7')}"
+                   th:classappend="${to.equals(T(java.time.LocalDate).now()) and from.equals(T(java.time.LocalDate).now().minusDays(6))} ? 'active'">近 7 天</a>
+                <a class="btn btn-outline-secondary btn-sm"
+                   th:href="@{/admin/stats(range='30')}"
+                   th:classappend="${to.equals(T(java.time.LocalDate).now()) and from.equals(T(java.time.LocalDate).now().minusDays(29))} ? 'active'">近 30 天</a>
+            </div>
+        </form>
+        <small class="text-muted mt-2 d-block">
+            区间 <strong th:text="${from}">2026-11-10</strong> ~ <strong th:text="${to}">2026-11-16</strong>：
+            成交 <strong th:text="${rangeOrders}">0</strong> 单、销售额
+            <strong th:text="${'¥' + rangeSales}">¥0</strong>
+            （按付款时间统计，仅已付款口径，与总销售额一致）
+        </small>
+    </div>
+
+    <!-- P1-9 每日销售额：纯 CSS 条形图（一行一天，宽度按区间最大日销售额归一），
+         不引 ECharts——部署页全走本地资源，零外部依赖 -->
+    <h5 class="mb-3">每日销售额 <small class="text-muted">（按付款时间，缺成交的日期补零）</small></h5>
+    <div class="mb-4" style="max-width: 860px;">
+        <div th:each="bar : ${dailyBars}" class="d-flex align-items-center mb-1">
+            <span class="text-muted small" style="width:96px"
+                  th:text="${bar.date}">2026-11-16</span>
+            <div class="progress flex-grow-1 me-2" style="height:20px"
+                 role="progressbar" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar bg-success" th:style="'width:' + ${bar.widthPercent} + '%'"></div>
+            </div>
+            <span class="small text-nowrap" style="width:150px"
+                  th:text="${'¥' + bar.sales} + ' / ' + ${bar.orderCount} + ' 单'">¥0 / 0 单</span>
+        </div>
+        <div th:if="${rangeSales.signum() == 0}" class="text-center text-muted py-2">
+            该区间暂无成交，换个日期范围试试
+        </div>
+    </div>
+
+    <!-- P1-9 分类销售占比：同样纯 CSS 条形图，按销售额倒序 -->
+    <h5 class="mb-3">分类销售占比 <small class="text-muted">（已付款口径，按销售额倒序）</small></h5>
+    <div class="mb-4" style="max-width: 860px;">
+        <div th:each="c : ${categoryShares}" class="d-flex align-items-center mb-1">
+            <span class="small text-nowrap" style="width:120px" th:text="${c.name}">分类名</span>
+            <div class="progress flex-grow-1 me-2" style="height:20px"
+                 role="progressbar" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" th:style="'width:' + ${c.widthPercent} + '%'"></div>
+            </div>
+            <span class="small text-nowrap" style="width:190px"
+                  th:text="${'¥' + c.sales} + '（' + ${c.percent} + '%）'">¥0（0%）</span>
+        </div>
+        <div th:if="${#lists.isEmpty(categoryShares)}" class="text-center text-muted py-2">
+            还没有已付款订单，暂无分类数据
         </div>
     </div>
 

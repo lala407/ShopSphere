@@ -60,4 +60,30 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     List<HotProductStat> findHotProducts(@Param("statuses") Collection<OrderStatus> statuses,
                                          Pageable pageable);
 
+    // ==========================================================
+    // [AI辅助 P1-9 新增] 分类销售占比
+    // ==========================================================
+
+    /**
+     * 各分类的销售额与销量（仅已付款口径）。
+     *
+     * <p>明细表只有裸 productId，要按分类聚合得先 join 商品表拿 categoryId——
+     * 两个没有关联关系的实体之间用「ad hoc join」（Hibernate 6 支持
+     * {@code JOIN Product p ON p.id = oi.productId}），这正是明细表用裸外键
+     * 设计（历史凭证不依赖商品表）仍然能做统计的原因。
+     *
+     * <p>排序不写在这里（JPQL 按别名 ORDER BY 不可靠），Controller 侧按销售额倒序。
+     */
+    @Query("""
+            SELECT p.categoryId AS categoryId,
+                   SUM(oi.subtotal) AS sales,
+                   SUM(oi.quantity) AS totalQty
+              FROM OrderItem oi
+              JOIN Product p ON p.id = oi.productId
+              JOIN oi.order o
+             WHERE o.status IN :statuses
+             GROUP BY p.categoryId
+            """)
+    List<CategorySalesStat> findCategorySales(@Param("statuses") Collection<OrderStatus> statuses);
+
 }

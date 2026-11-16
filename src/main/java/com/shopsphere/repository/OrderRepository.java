@@ -106,4 +106,39 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.status IN :statuses")
     BigDecimal sumTotalAmountByStatusIn(@Param("statuses") Collection<OrderStatus> statuses);
 
+    // ==========================================================
+    // [AI辅助 P1-9 新增] 每日销售额趋势：按付款日期分组聚合
+    // ==========================================================
+
+    /**
+     * 区间内每日销售额与成交单数（仅已付款口径，与总销售额同一标准）。
+     *
+     * <p>为什么按 paidAt（付款时间）而不是 createdAt 统计？——
+     * 销售额在"付款"那一刻才成立：待付款订单随时可能取消，按下单时间会把
+     * 未成交的单算进去，与「总销售额」「热销 Top5」口径打架。
+     *
+     * <p>日期怎么取？JPQL 没有跨库统一的 DATE() 函数，这里用最稳的写法：
+     * {@code SUBSTRING(CAST(o.paidAt AS string), 1, 10)} —— 时间戳转字符串后
+     * 截前 10 位（yyyy-MM-dd），MySQL 和 H2 都能正确翻译成 CAST AS CHAR / VARCHAR。
+     * 别名 saleDate 直接用 String 接，Controller 侧再 parse 补零。
+     *
+     * <p>GROUP BY 里必须重复完整表达式而不是别名——严格 JPQL 不允许按别名分组。
+     *
+     * <p>时间范围沿用「左闭右开」约定（调用方传 截止日 +1 天的 00:00）。
+     */
+    @Query("""
+            SELECT SUBSTRING(CAST(o.paidAt AS string), 1, 10) AS saleDate,
+                   SUM(o.totalAmount) AS dailySales,
+                   COUNT(o.id)        AS orderCount
+              FROM Order o
+             WHERE o.status IN :statuses
+               AND o.paidAt IS NOT NULL
+               AND o.paidAt >= :from
+               AND o.paidAt <  :to
+             GROUP BY SUBSTRING(CAST(o.paidAt AS string), 1, 10)
+            """)
+    List<DailySalesStat> sumDailySalesByStatusIn(@Param("statuses") Collection<OrderStatus> statuses,
+                                                 @Param("from") LocalDateTime from,
+                                                 @Param("to") LocalDateTime to);
+
 }
