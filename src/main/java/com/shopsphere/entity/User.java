@@ -11,6 +11,8 @@ package com.shopsphere.entity;
 // [AI辅助] 补充跨包导入：UserRole 在 common 包，entity 包用必须显式 import
 import com.shopsphere.common.UserRole;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -113,9 +115,19 @@ public class User {
      * 但数据库列仍保留 NULL：一是兼容此前注册的老数据与种子账号，
      * 二是"列可空"不代表"业务允许空"，约束放在业务层比放在表结构上更灵活。
      *
-     * <p>如果将来要求邮箱唯一，加 unique = true，
+     *     <p>如果将来要求邮箱唯一，加 unique = true，
      * 但 MySQL 下多个 NULL 不冲突，符合"未填邮箱"的语义。
+     *
+     * <p>[手写 P2-3] 实体层再加一道 Bean Validation 兜底：
+     * {@code @Email} 管格式、{@code @Size(max = 100)} 管长度，与 UserService#register
+     * 的"必填 + 正则"形成两层——Service 管业务规则（必填、给出中文提示），
+     * 实体注解管数据完整性（绕过 Service 直接 userRepository.save 也存不进脏格式）。
+     * 注意 <b>不加 @NotBlank</b>：列本身可空（兼容 Day8 之前注册的老账号与种子数据），
+     * 而 JPA 的 PrePersist/PreUpdate 校验会对"老账号被重新 save"生效，
+     * 加 @NotBlank 会让历史数据一改就报错。@Email 对 null 是放行的，正好。
      */
+    @Email(message = "邮箱格式不正确，例如 name@example.com")
+    @Size(max = 100, message = "邮箱长度不能超过 100 个字符")
     @Column(name = "email", length = 100)
     private String email;
 
