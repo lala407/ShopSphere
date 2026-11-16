@@ -8,6 +8,7 @@ package com.shopsphere.repository;
 
 import com.shopsphere.entity.CartItem;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +32,13 @@ public interface CartItemRepository extends JpaRepository<CartItem, Long> {
     List<CartItem> findByUserIdOrderByIdDesc(Long userId);
     // [手写] TODO 3：删除某用户的全部购物车项（清空用）
     void deleteByUserId(Long userId);
+
+    // [手写 P1-7] 删除某商品在所有用户购物车里的引用（物理删除商品前先清购物车，
+    // 否则会留下指向不存在商品的悬空购物车项）。
+    // ⚠️ 派生删除方法自带事务才有意义：在 Controller 这种无事务上下文里直接调，
+    // 必须标 @Transactional（deleteByUserId 在 Service 的事务方法里调，所以没标也能跑）
+    @Transactional
+    void deleteByProductId(Long productId);
 
 
 

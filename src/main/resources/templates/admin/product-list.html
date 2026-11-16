@@ -63,6 +63,13 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
                             th:classappend="${p.status.name() == 'ON_SALE'} ? 'btn-outline-danger' : 'btn-outline-success'"
                             th:text="${p.status.name() == 'ON_SALE'} ? '下架' : '上架'">下架</button>
                 </form>
+                <!-- P1-7 物理删除：从未被买过的商品才能删（后台会校验订单引用），
+                     onsubmit 拦截给用户一次反悔机会 -->
+                <form th:action="@{/admin/product/{id}/delete(id=${p.id})}"
+                      method="post" class="d-inline"
+                      onsubmit="return confirm('确定删除该商品吗？若已有订单记录将无法删除。')">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>
+                </form>
             </td>
         </tr>
         <tr th:if="${pageData.empty}">

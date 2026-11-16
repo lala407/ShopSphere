@@ -9,7 +9,9 @@ package com.shopsphere.controller;
 import com.shopsphere.common.ProductStatus;
 import com.shopsphere.entity.Category;
 import com.shopsphere.entity.Product;
+import com.shopsphere.repository.CartItemRepository;
 import com.shopsphere.repository.CategoryRepository;
+import com.shopsphere.repository.OrderItemRepository;
 import com.shopsphere.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -48,6 +50,8 @@ public class AdminProductController {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final OrderItemRepository orderItemRepository;
+    private final CartItemRepository cartItemRepository;
 
     /**
      * 商品列表 GET /admin/product?page=
@@ -151,6 +155,37 @@ public class AdminProductController {
             redirectAttributes.addFlashAttribute("msg", "商品「" + product.getName() + "」已上架");
         }
         productRepository.save(product);
+        return "redirect:/admin/product";
+    }
+
+    /**
+     * 删除商品 POST /admin/product/{id}/delete（P1-7 新增，物理删除）。
+     *
+     * <p>什么时候能删、什么时候不能删？
+     * <ul>
+     *   <li>从未被任何订单买过（order_item 无 productId 引用）→ 物理删除，顺带清掉
+     *       各用户购物车里对该商品的引用（避免留下悬空购物车项）；</li>
+     *   <li>已被订单买过 → 拒绝删除。订单明细存的是价格快照（裸 Long，无外键），
+     *       删商品本身不会让历史订单报错，但"删除"在语义上等于抹掉一个真实卖过的商品，
+     *       历史报表（按 productId 聚合的 Top5）会对不上号。此时应改用下架——
+     *       下架后前台 searchOnSale 查不到，历史与统计完整保留。</li>
+     * </ul>
+     *
+     * <p>成功走 msg（绿色 alert），被拒走 error（红色 alert），都 flash 到列表页。
+     */
+    @PostMapping("/{id}/delete")
+    public String delete(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("商品不存在"));
+
+        if (orderItemRepository.existsByProductId(id)) {
+            redirectAttributes.addFlashAttribute("error",
+                    "商品「" + product.getName() + "」已有订单记录，删除会影响历史订单与统计，请改用下架");
+        } else {
+            cartItemRepository.deleteByProductId(id);
+            productRepository.delete(product);
+            redirectAttributes.addFlashAttribute("msg", "商品「" + product.getName() + "」已删除");
+        }
         return "redirect:/admin/product";
     }
 }
