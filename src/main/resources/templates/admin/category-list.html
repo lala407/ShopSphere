@@ -1,0 +1,95 @@
+<!-- ============================================================
+AI 辅助说明：本文件由 AI 辅助生成/修改
+生成内容：admin/category-list.html —— 后台分类管理（P1-8 新增）
+人工修改：无
+审查状态：待人工审查
+============================================================ -->
+<!--
+  依赖的 model（AdminCategoryController.list 提供）：
+    categories    —— List<Category>，按 sortOrder 升序
+    productCounts —— Map<Long, Long>，分类 id → 商品数
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('分类管理 - 后台')}"></head>
+<body>
+<nav th:replace="~{fragments/nav :: nav}"></nav>
+
+<main class="container">
+    <!-- 后台子导航：当前页高亮（active） -->
+    <ul th:replace="~{fragments/admin-nav :: tabs('category')}"></ul>
+
+    <!-- flash 提示：操作成功/失败的反馈 -->
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+    <div th:if="${msg}" class="alert alert-success" th:text="${msg}"></div>
+
+    <h4 class="mb-3">分类管理</h4>
+
+    <!-- 新增分类：一行搞定（名称 + 排序 + 提交） -->
+    <form th:action="@{/admin/category/add}" method="post"
+          class="row g-2 align-items-end mb-4 bg-light rounded p-3">
+        <div class="col-auto">
+            <label for="new-name" class="form-label mb-0">分类名称 <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="new-name" name="name"
+                   maxlength="50" required placeholder="如：数码配件">
+        </div>
+        <div class="col-auto">
+            <label for="new-sort" class="form-label mb-0">显示顺序</label>
+            <input type="number" class="form-control" id="new-sort" name="sortOrder"
+                   value="0" style="width:110px">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">+ 新增分类</button>
+        </div>
+        <div class="col-12">
+            <small class="text-muted">显示顺序越小越靠前（前台首页分类栏按此排序）；名称不能与现有分类重复</small>
+        </div>
+    </form>
+
+    <table class="table table-hover align-middle">
+        <thead class="table-light">
+        <tr>
+            <th>ID</th><th>分类名称</th><th>商品数</th><th>显示顺序</th><th>操作</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="c : ${categories}">
+            <td th:text="${c.id}">1</td>
+            <td style="min-width:200px">
+                <!-- 改名 + 排序共用一行表单：输入框即当前值，改完点"保存" -->
+                <form th:action="@{/admin/category/{id}/update(id=${c.id})}"
+                      method="post" class="d-flex gap-2 align-items-center">
+                    <input type="text" class="form-control form-control-sm" name="name"
+                           th:value="${c.name}" maxlength="50" required
+                           style="width:180px" th:aria-label="${'分类名-' + c.name}">
+                    <input type="number" class="form-control form-control-sm" name="sortOrder"
+                           th:value="${c.sortOrder}" style="width:90px" aria-label="显示顺序">
+                    <button type="submit" class="btn btn-sm btn-outline-primary">保存</button>
+                </form>
+            </td>
+            <!-- 商品数即"能否删除"的直观依据 -->
+            <td th:text="${productCounts[c.id]}">0</td>
+            <td th:text="${c.sortOrder}">0</td>
+            <td>
+                <!-- 删除前后台会校验商品引用；confirm 给一次反悔机会 -->
+                <form th:action="@{/admin/category/{id}/delete(id=${c.id})}"
+                      method="post" class="d-inline"
+                      onsubmit="return confirm('确定删除该分类吗？若分类下还有商品将无法删除。')">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>
+                </form>
+            </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(categories)}">
+            <td colspan="5" class="text-center text-muted py-4">还没有分类，用上方表单新增一个</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <p class="text-muted">
+        <small>分类下有商品时不能删除（避免出现指向不存在分类的孤儿商品）；先在商品管理里把商品移到其他分类，再回来删除。</small>
+    </p>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

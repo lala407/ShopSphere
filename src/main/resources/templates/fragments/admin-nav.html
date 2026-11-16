@@ -7,7 +7,7 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
 <!--
   用法（在后台页面里一行引入，参数是当前页签）：
     <ul th:replace="~{fragments/admin-nav :: tabs('product')}"></ul>
-  可选值：product / order / stats / log
+  可选值：product / category / order / stats / log
 
   为什么要抽成片段？
   原来 5 个后台模板里各贴一份 3 行的 nav-pills，加"访问日志"页签时要改 5 处，
@@ -17,6 +17,10 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
     <li class="nav-item">
         <a class="nav-link" th:classappend="${active == 'product'} ? 'active'"
            href="/admin/product">商品管理</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" th:classappend="${active == 'category'} ? 'active'"
+           href="/admin/category">分类管理</a>
     </li>
     <li class="nav-item">
         <a class="nav-link" th:classappend="${active == 'order'} ? 'active'"

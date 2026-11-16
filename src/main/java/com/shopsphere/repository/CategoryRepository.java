@@ -10,6 +10,7 @@ import com.shopsphere.entity.Category;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 分类表数据访问层。
@@ -17,7 +18,6 @@ import java.util.List;
  * <p>[AI骨架] 送分题——巩固"方法名即 SQL"约定。
  * 首页分类筛选栏需要按 sort_order 升序查全部分类。
  */
-import java.util.List;
 
 public interface CategoryRepository extends JpaRepository<Category, Long> {
 
@@ -40,5 +40,11 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
      * @return 按 sortOrder 升序排列的分类列表；没有数据时返回空 List（不是 null）
      */
     List<Category> findAllByOrderBySortOrderAsc();
+
+    /**
+     * [AI辅助 P1-8 新增] 按分类名精确查找——后台新增/改名分类前的重名校验
+     * （数据库对 name 有 unique 约束，提前查比事后接 DataIntegrityViolationException 友好）。
+     */
+    Optional<Category> findByName(String name);
 
 }

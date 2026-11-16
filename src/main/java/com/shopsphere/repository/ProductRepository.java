@@ -83,6 +83,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     int deductStock(@Param("pid") Long productId, @Param("qty") int quantity);
 
     /**
+     * [AI辅助 P1-8 新增] 统计某分类下的商品数。
+     * 后台分类删除前的引用校验：有商品的分类不允许删，只能先移走商品再删。
+     */
+    long countByCategoryId(Long categoryId);
+
+    /**
      * [AI完整实现 Day6] 取消订单回补库存：stock = stock + qty。
      *
      * <p>和 deductStock 对照看：
