@@ -28,7 +28,7 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long> {
 
 
-    // [手写] TODO：你来声明按用户名查用户的方法
+    // 你来声明按用户名查用户的方法
    Optional<User> findByUsername(String username);
 
 }

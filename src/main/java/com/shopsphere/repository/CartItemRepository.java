@@ -25,12 +25,12 @@ import java.util.Optional;
 public interface CartItemRepository extends JpaRepository<CartItem, Long> {
 
     // ==========================================================
-    // [手写] TODO 1：按"用户 + 商品"查一行（加购时判断是否已存在）
+    // 按"用户 + 商品"查一行（加购时判断是否已存在）
     Optional<CartItem> findByUserIdAndProductId(Long userId, Long productId);
 
-    // [手写] TODO 2：查某用户的全部购物车项，id 倒序（新加的在前）
+    // 查某用户的全部购物车项，id 倒序（新加的在前）
     List<CartItem> findByUserIdOrderByIdDesc(Long userId);
-    // [手写] TODO 3：删除某用户的全部购物车项（清空用）
+    // 删除某用户的全部购物车项（清空用）
     void deleteByUserId(Long userId);
 
     // [手写 P1-7] 删除某商品在所有用户购物车里的引用（物理删除商品前先清购物车，

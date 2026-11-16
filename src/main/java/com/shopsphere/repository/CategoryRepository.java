@@ -22,7 +22,7 @@ import java.util.Optional;
 public interface CategoryRepository extends JpaRepository<Category, Long> {
 
     // ==========================================================
-    // [手写] TODO：声明一个方法，按 sortOrder 升序查所有分类
+    // 声明一个方法，按 sortOrder 升序查所有分类
     //
     //   返回：List<Category>
     //   方法名拆解：findAllBy + OrderBy + SortOrder + Asc

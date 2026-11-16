@@ -1,7 +1,7 @@
 // ============================================================
 // AI 辅助说明：本文件由 AI 辅助生成/修改
-// 生成内容：OrderController 骨架（类声明、注解、字段 + 各方法 TODO 步骤）
-// 人工修改：全部方法体由本人手写
+// 生成内容：OrderController 骨架（类声明、注解、字段）
+// 人工修改：全部方法体由本人手写；[P2-9] 统一缩进、清理已完成步骤的待办注释
 // 审查状态：待人工审查
 // ============================================================
 package com.shopsphere.controller;
@@ -26,8 +26,6 @@ import java.util.List;
 /**
  * 结算 + 我的订单。
  *
- * <p>[AI骨架] 类注解与依赖已就位，方法体由你手写。
- *
  * <p>路径规划：
  * <pre>
  * GET  /checkout          结算页（展示购物车 + 收货表单）
@@ -35,8 +33,13 @@ import java.util.List;
  * GET  /orders            我的订单列表
  * GET  /orders/{id}       订单详情
  * POST /orders/{id}/pay   模拟付款
+ * POST /orders/{id}/cancel   用户取消（仅待付款）
+ * POST /orders/{id}/confirm  确认收货（仅已发货）
  * </pre>
  * 这些路径都已在 LoginInterceptor 的拦截范围内（/checkout 与 /order/** 与 /orders/**）。
+ *
+ * <p>[P2-9] 本文件历史版本缩进混乱（1 空格 / 2 空格 / 5 空格混用），已整体按 4 空格重排，
+ * 逻辑一行未改。
  */
 @Controller
 @RequiredArgsConstructor
@@ -54,26 +57,24 @@ public class OrderController {
     /**
      * 结算页 GET /checkout。
      *
-     * model 需要三样：
-     *   items       —— 购物车项（让用户确认买什么）
-     *   totalAmount —— 合计（与购物车页同一口径）
-     *   （cartCount 由 CartCountAdvice 全局注入，不用管）
+     * <p>model 需要三样：
+     * items —— 购物车项（让用户确认买什么）；
+     * totalAmount —— 合计（与购物车页同一口径）；
+     * cartCount 由 CartCountAdvice 全局注入，这里不用管。
      */
     @GetMapping("/checkout")
     public String checkout(HttpSession session, Model model) {
-        // [手写] TODO：
-       Long userId = (Long) session.getAttribute("userId");
+        Long userId = (Long) session.getAttribute("userId");
         model.addAttribute("items", cartService.getItems(userId));
         model.addAttribute("totalAmount", cartService.getTotalAmount(userId));
         return "checkout";
-
     }
 
     /**
      * 提交订单 POST /order/create。
      *
-     * 成功 → 重定向到 /orders/{新订单id}（PRG，避免刷新重复下单）
-     * 失败 → flash error + 重定向回 /checkout（让用户改了再提交）
+     * <p>成功 → 重定向到 /orders/{新订单id}（PRG，避免刷新重复下单）；
+     * 失败 → flash error + 重定向回 /checkout（让用户改了再提交）。
      */
     @PostMapping("/order/create")
     public String create(@RequestParam String receiverName,
@@ -82,64 +83,59 @@ public class OrderController {
                          @RequestParam(required = false) String remark,
                          HttpSession session,
                          RedirectAttributes redirectAttributes) {
-        // [手写] TODO：
         Long userId = (Long) session.getAttribute("userId");
         try {
-              Order order = orderService.createOrder(userId, receiverName, receiverPhone, receiverAddress, remark);
-              return "redirect:/orders/" + order.getId();
-           } catch (IllegalArgumentException e) {
-          redirectAttributes.addFlashAttribute("error", e.getMessage());
-              return "redirect:/checkout";
-         }
-
+            Order order = orderService.createOrder(
+                    userId, receiverName, receiverPhone, receiverAddress, remark);
+            return "redirect:/orders/" + order.getId();
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/checkout";
+        }
     }
 
     /** 我的订单列表 GET /orders。 */
     @GetMapping("/orders")
     public String list(HttpSession session, Model model) {
-        // [手写] TODO：
-         Long userId = (Long) session.getAttribute("userId");
-         model.addAttribute("orders", orderService.listByUser(userId));
-         return "orders";
-
+        Long userId = (Long) session.getAttribute("userId");
+        model.addAttribute("orders", orderService.listByUser(userId));
+        return "orders";
     }
 
     /**
      * 订单详情 GET /orders/{id}。
      *
-     * ⚠️ 必须走 orderService.getOwnedOrder(userId, id)（内部按 user_id 过滤），
+     * <p>⚠️ 必须走 orderService.getOwnedOrder(userId, id)（内部按 user_id 过滤），
      * 不能直接 findById——否则改个 id 就能看别人订单（越权）。
      */
     @GetMapping("/orders/{id}")
     public String detail(@PathVariable Long id, HttpSession session, Model model) {
-        // [手写] TODO：
         Long userId = (Long) session.getAttribute("userId");
         try {
-             Order order = orderService.getOwnedOrder(userId, id);
-              List<OrderItem> items = orderService.getItems(id);
-               model.addAttribute("order", order);
-              model.addAttribute("items", items);
-              // [AI辅助 Day8] 通知邮件记录：页面据此显示"已发送/未发送 + 邮箱 + 时间"
-              model.addAttribute("mailLogs", mailLogRepository.findByOrderIdOrderByIdAsc(id));
-               return "order-detail";
-           } catch (IllegalArgumentException e) {
-               return "redirect:/orders";     // 订单不存在/不是自己的 → 回列表
-           }
-
+            Order order = orderService.getOwnedOrder(userId, id);
+            List<OrderItem> items = orderService.getItems(id);
+            model.addAttribute("order", order);
+            model.addAttribute("items", items);
+            // [AI辅助 Day8] 通知邮件记录：页面据此显示"已发送/未发送 + 邮箱 + 时间"
+            model.addAttribute("mailLogs", mailLogRepository.findByOrderIdOrderByIdAsc(id));
+            return "order-detail";
+        } catch (IllegalArgumentException e) {
+            return "redirect:/orders";     // 订单不存在/不是自己的 → 回列表
+        }
     }
 
     /** 模拟付款 POST /orders/{id}/pay。 */
     @PostMapping("/orders/{id}/pay")
-    public String pay(@PathVariable Long id, HttpSession session, RedirectAttributes redirectAttributes) {
-        // [手写] TODO：
-          Long userId = (Long) session.getAttribute("userId");
-          try {
-             orderService.pay(userId, id);
-          } catch (IllegalArgumentException e) {
-              redirectAttributes.addFlashAttribute("error", e.getMessage());
-          }
-           return "redirect:/orders/" + id;
-
+    public String pay(@PathVariable Long id,
+                      HttpSession session,
+                      RedirectAttributes redirectAttributes) {
+        Long userId = (Long) session.getAttribute("userId");
+        try {
+            orderService.pay(userId, id);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/orders/" + id;
     }
 
     /**
@@ -147,7 +143,9 @@ public class OrderController {
      * Service 侧校验：订单归属 + 只有 CREATED 可自行取消（已付款走后台）。
      */
     @PostMapping("/orders/{id}/cancel")
-    public String cancel(@PathVariable Long id, HttpSession session, RedirectAttributes redirectAttributes) {
+    public String cancel(@PathVariable Long id,
+                         HttpSession session,
+                         RedirectAttributes redirectAttributes) {
         Long userId = (Long) session.getAttribute("userId");
         try {
             orderService.cancelByUser(userId, id);
@@ -163,7 +161,9 @@ public class OrderController {
      * 这是状态机里 COMPLETED 的唯一入口（P1-3 修复前该状态无任何流转可达）。
      */
     @PostMapping("/orders/{id}/confirm")
-    public String confirm(@PathVariable Long id, HttpSession session, RedirectAttributes redirectAttributes) {
+    public String confirm(@PathVariable Long id,
+                          HttpSession session,
+                          RedirectAttributes redirectAttributes) {
         Long userId = (Long) session.getAttribute("userId");
         try {
             orderService.confirmByUser(userId, id);

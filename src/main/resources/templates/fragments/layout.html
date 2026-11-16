@@ -22,6 +22,28 @@ AI 辅助说明：本文件由 AI 辅助生成/修改
          截图和演示都救不回来。本地化后断网也能正常渲染。 -->
     <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}">
     <link rel="icon" th:href="@{/images/favicon.svg}" type="image/svg+xml">
+
+    <!-- [P2-5] CSRF 令牌：由 CsrfTokenFilter 写进请求属性，这里落到 meta 供脚本读取。
+         同步令牌方案，页面脚本给所有 POST 表单自动补隐藏域，服务端再逐个校验。
+         攻击者的页面读不到本站 DOM，拿不到这个值，伪造的 POST 会被 403 拦下。 -->
+    <meta name="_csrf" th:content="${_csrf}">
+    <script>
+        // 只补 POST 表单（GET 查询不改变状态，不需要令牌）
+        document.addEventListener('DOMContentLoaded', function () {
+            var meta = document.querySelector('meta[name="_csrf"]');
+            if (!meta || !meta.content) return;
+            document.querySelectorAll('form').forEach(function (form) {
+                var method = (form.getAttribute('method') || 'get').toLowerCase();
+                if (method !== 'post') return;
+                if (form.querySelector('input[name="_csrf"]')) return;
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = '_csrf';
+                input.value = meta.content;
+                form.appendChild(input);
+            });
+        });
+    </script>
 </head>
 
 <!-- 页脚片段：用法 <footer th:replace="~{fragments/layout :: footer}"></footer> -->

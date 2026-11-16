@@ -80,6 +80,11 @@ spring:
 
 # 业务侧开关（和上面的 SMTP 账号分开：账号是"怎么发"，这里是"发不发"）
 shopsphere:
+  security:
+    csrf:
+      # [P2-5] 同步令牌式 CSRF 防护：默认开启。测试 profile 置 false（见 application-test.yml），
+      # 临时排障时也可用环境变量 CSRF_ENABLED=false 关掉
+      enabled: ${CSRF_ENABLED:true}
   mail:
     enabled: ${MAIL_ENABLED:true}                  # 关掉后所有邮件都记为 SKIPPED
     from-name: ShopSphere 商城                      # 发件人显示名

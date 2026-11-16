@@ -1,7 +1,7 @@
 // ============================================================
 // AI 辅助说明：本文件由 AI 辅助生成/修改
-// 生成内容：UserService 骨架（类声明 + 方法签名，方法体为 TODO）
-// 人工修改：字段、注解、方法体由本人手写
+// 生成内容：UserService 骨架（类声明 + 方法签名）
+// 人工修改：字段、注解、方法体由本人手写；[P2-9] 统一缩进、清理已完成步骤的待办注释
 // 审查状态：待人工审查
 // ============================================================
 package com.shopsphere.service;
@@ -19,25 +19,27 @@ import java.util.Optional;
  * 用户业务层：注册、登录。
  *
  * <p>为什么 Controller 不直接用 Repository，中间隔一层 Service？
- * → 业务规则（查重、加密、禁用判断）放 Service，Controller 只管
- * HTTP 进出。换掉页面/加接口时业务代码一行不用动（可复用）。
- *
- * <p>[AI骨架] 类声明与方法签名已就位，注解、字段、方法体由本人手写。
+ * → 业务规则（查重、加密、禁用判断）放 Service，Controller 只管 HTTP 进出。
+ * 换掉页面/加接口时业务代码一行不用动（可复用）。
  *
  * <p>计划书 6.4 决策：MVP 阶段 Service 不写 interface + impl，
  * 单一实现不需要为多态买单。
  */
-// ==========================================================
-// [手写] TODO 1：类上加两个注解——
-    @Service
-    @RequiredArgsConstructor
-
+@Service
+@RequiredArgsConstructor
 public class UserService {
-    // [手写] TODO 2：声明两个 private final 字段（依赖注入）——
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    public void register(String username, String password, String email) {
 
+    /**
+     * 注册。
+     *
+     * <p>校验顺序：用户名长度 → 密码长度 → 邮箱必填与格式 → 用户名查重。
+     * 全部抛 {@link IllegalArgumentException}（带中文提示），由 Controller 落成页面红字；
+     * 不抛 400 是因为「表单填错」是正常交互，不该让用户看到错误页。
+     */
+    public void register(String username, String password, String email) {
         // 1) 校验非空 / 长度
         if (username == null || username.isBlank()
                 || username.length() < 3 || username.length() > 20) {
@@ -81,11 +83,14 @@ public class UserService {
 
     /**
      * 登录。
-     * 约定：成功返回 User（由 Controller 写进 Session）；
+     *
+     * <p>约定：成功返回 User（由 Controller 写进 Session）；
      * 失败统一抛 "用户名或密码错误"，防止攻击者探测用户名是否存在。
+     *
+     * <p>失败次数限制不在这里做——它属于「请求频率/会话」层面的防护，
+     * 放在 {@link LoginAttemptService} 由 Controller 调用（P2-5）。
      */
     public User login(String username, String password) {
-
         // 1) 查用户
         Optional<User> opt = userRepository.findByUsername(username);
         if (opt.isEmpty()) {

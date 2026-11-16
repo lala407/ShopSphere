@@ -41,7 +41,7 @@ public class Product {
 
 
 
-    // ========== TODO：写字段 ==========
+    // ========== 字段 ==========
     // 参考计划书 5.2 product 商品表：
 
     // 1) id           BIGINT PK AUTO_INCREMENT

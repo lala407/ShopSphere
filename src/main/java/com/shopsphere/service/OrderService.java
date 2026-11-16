@@ -56,6 +56,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class OrderService {
 
+    /** [P2-7] 订单号时间戳格式：精确到毫秒（17 位）。 */
+    private static final DateTimeFormatter ORDER_NO_TIMESTAMP =
+            DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
+    /** [P2-7] 订单号查重重试次数。 */
+    private static final int ORDER_NO_MAX_RETRY = 5;
+
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final CartItemRepository cartItemRepository;
@@ -112,9 +118,9 @@ public class OrderService {
             total = total.add(p.getPrice().multiply(BigDecimal.valueOf(ci.getQuantity())));
         }
 
-        // 步骤 3：组装并保存订单（订单号由 AI 实现的 generateOrderNo 生成）
+        // 步骤 3：组装并保存订单（订单号由 nextUniqueOrderNo 生成：毫秒时间戳 + 随机位 + 查重重试）
         Order order = new Order();
-        order.setOrderNo(generateOrderNo());
+        order.setOrderNo(nextUniqueOrderNo());
 
         // [AI辅助 Day8] 查真实 User：邮件要发给 user.email。
         // 先把 email 取到局部变量——后面 deductStock 的 clearAutomatically 会清空持久化上下文，
@@ -376,18 +382,41 @@ public class OrderService {
     }
 
     /**
-     * [AI完整实现] 生成业务单号：ORD + 时间戳 + 4 位随机数，共 21 字符（限长 32）。
+     * [P2-7] 生成业务单号并做查重重试。
      *
-     * <p>格式：ORD20251030153012 0042
+     * <p>原实现是「秒级时间戳 + 4 位随机数」：同一秒内 10000 个随机值，
+     * 量级一上来（或压测脚本并发下单）就会撞上 {@code uk_order_no} 唯一键，
+     * 抛 DataIntegrityViolationException 直接变成 500——用户看到的是「下单失败」，
+     * 而且事务已回滚，体验和数据都受损。
+     *
+     * <p>现在两道保险：
+     * <ol>
+     *   <li>时间戳精确到毫秒 + 6 位随机数，同毫秒碰撞概率 1/1000000；</li>
+     *   <li>生成后先查库，撞了就重生成（最多 5 次）——把极小概率的冲突消化在应用层，
+     *       而不是让它变成唯一键异常。</li>
+     * </ol>
+     * 仍冲突说明随机源出问题，抛异常比悄悄覆盖更安全（由全局异常处理兜底）。
+     */
+    private String nextUniqueOrderNo() {
+        for (int i = 0; i < ORDER_NO_MAX_RETRY; i++) {
+            String candidate = generateOrderNo();
+            if (!orderRepository.existsByOrderNo(candidate)) {
+                return candidate;
+            }
+        }
+        throw new IllegalStateException("订单号生成冲突，请重新提交订单");
+    }
+
+    /**
+     * 生成业务单号：ORD + 17 位毫秒时间戳 + 6 位随机数，共 26 字符（列宽 32）。
+     *
+     * <p>格式：ORD20251030153012345 004269
      * 前缀 ORD 便于人工识别；时间戳前缀让订单自然按时间排序；
-     * 4 位随机数降低同秒并发碰撞概率（真高并发应改用雪花算法/号段）。
-     *
-     * <p>String.format("%04d", n)：不足 4 位补前导零，保证长度固定。
+     * 毫秒 + 6 位随机数把同刻碰撞概率压到百万分之一（配合上面的查重重试基本不会失败）。
      */
     private String generateOrderNo() {
-        String timestamp = LocalDateTime.now()
-                .format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-        int random = ThreadLocalRandom.current().nextInt(10000);
-        return "ORD" + timestamp + String.format("%04d", random);
+        String timestamp = LocalDateTime.now().format(ORDER_NO_TIMESTAMP);
+        int random = ThreadLocalRandom.current().nextInt(1_000_000);
+        return "ORD" + timestamp + String.format("%06d", random);
     }
 }

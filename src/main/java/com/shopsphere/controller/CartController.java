@@ -1,6 +1,6 @@
 // ============================================================
 // AI 辅助说明：本文件由 AI 辅助生成/修改
-// 生成内容：CartController 骨架（类声明、注解、字段 + 各方法 TODO 步骤）
+// 生成内容：CartController 骨架（类声明、注解、字段）
 // 人工修改：全部方法体由本人手写
 // 审查状态：待人工审查
 // ============================================================
@@ -21,7 +21,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequestMapping("/cart")
 @RequiredArgsConstructor
 public class CartController {
-
     private final CartService cartService;
 
     /**
@@ -29,8 +28,7 @@ public class CartController {
      */
     @GetMapping
     public String list(HttpSession session, Model model) {
-
-        // [手写] 从 Session 取 userId（拦截器已保证 /cart/** 必须登录）
+        // 从 Session 取 userId（拦截器已保证 /cart/** 必须登录）
         Long userId = (Long) session.getAttribute("userId");
 
         // [手写] 购物车项列表 + 合计金额
@@ -48,9 +46,7 @@ public class CartController {
                       @RequestParam(defaultValue = "1") int quantity,
                       HttpSession session,
                       RedirectAttributes redirectAttributes) {
-
-
-        // [手写] 从 Session 取 userId
+        // 从 Session 取 userId
         Long userId = (Long) session.getAttribute("userId");
 
         try {
@@ -69,7 +65,7 @@ public class CartController {
                          @RequestParam int quantity,
                          HttpSession session,
                          RedirectAttributes redirectAttributes) {
-         // [手写] 从 Session 取 userId
+        // 从 Session 取 userId
         Long userId = (Long) session.getAttribute("userId");
 
         try {
@@ -86,8 +82,7 @@ public class CartController {
     public String remove(@RequestParam Long cartItemId,
                          HttpSession session,
                          RedirectAttributes redirectAttributes) {
-
-        // [手写] 从 Session 取 userId
+        // 从 Session 取 userId
         Long userId = (Long) session.getAttribute("userId");
 
         try {
@@ -101,8 +96,7 @@ public class CartController {
     /** 清空购物车 POST /cart/clear。 */
     @PostMapping("/clear")
     public String clear(HttpSession session) {
-
-        // [手写] 从 Session 取 userId，直接清空
+        // 从 Session 取 userId，直接清空
         Long userId = (Long) session.getAttribute("userId");
         cartService.clear(userId);
         return "redirect:/cart";

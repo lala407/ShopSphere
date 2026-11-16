@@ -23,19 +23,22 @@ import java.util.Optional;
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
     // ==========================================================
-    // [手写] TODO 1：按"订单 id + 用户 id"查订单（详情/付款时做归属校验）
+    // 按"订单 id + 用户 id"查订单（详情/付款时做归属校验）
    Optional<Order> findByIdAndUserId(Long id, Long userId);
 
-    // [手写] TODO 2：查某用户的全部订单，按下单时间倒序（新的在前）
+   /** [P2-7] 生成订单号时查重，避免唯一键冲突把下单打成 500。 */
+   boolean existsByOrderNo(String orderNo);
+
+    // 查某用户的全部订单，按下单时间倒序（新的在前）
    List<Order> findByUserIdOrderByCreatedAtDesc(Long userId);
 
-    // [手写 Day6] TODO 3：后台订单列表 —— 查全部订单，按下单时间倒序
+    // 后台订单列表 —— 查全部订单，按下单时间倒序
     //   （findAllBy 后面直接跟 OrderBy，中间没有条件字段）
     //   ⚠️ [P1-6 后] 后台列表已改用下方 search(...) 分页查询（订单多了全量加载会卡）；
     //   这两个全量方法保留给「导出 / 统计脚本」这类确实需要全部数据的场景。
     List<Order> findAllByOrderByCreatedAtDesc();
 
-    // [手写 Day6] TODO 4：后台订单筛选 —— 按状态查订单，按下单时间倒序
+    // 后台订单筛选 —— 按状态查订单，按下单时间倒序
     List<Order> findByStatusOrderByCreatedAtDesc(OrderStatus status);
 
     // ==========================================================

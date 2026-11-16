@@ -39,3 +39,8 @@ shopsphere:
     enabled: true
     from-name: ShopSphere 测试
     base-url: http://localhost:8080
+  security:
+    csrf:
+      # [P2-5] 测试默认关掉 CSRF：几十个用例都在直接 POST，逐个取 token 会把测试写得很啰嗦。
+      # 防护本身由 CsrfProtectionTest 单独打开开关做专项验证（@SpringBootTest properties 覆盖）。
+      enabled: false

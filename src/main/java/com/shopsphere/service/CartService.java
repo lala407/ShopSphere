@@ -1,6 +1,6 @@
 // ============================================================
 // AI 辅助说明：本文件由 AI 辅助生成/修改
-// 生成内容：CartService 骨架（类声明、注解、字段 + 各方法 TODO 步骤）
+// 生成内容：CartService 骨架（类声明、注解、字段）
 // 人工修改：全部方法体由本人手写
 // 审查状态：待人工审查
 // ============================================================
@@ -73,7 +73,7 @@ public class CartService {
 
     /** 查某用户的购物车列表（id 倒序，新加的在前）。 */
     public List<CartItem> getItems(Long userId) {
-        // [手写] TODO：一行调用 repository 的查询方法
+        // 一行调用 repository 的查询方法
         // [手写] 直接调 Repository 的 id 倒序查询
         return cartItemRepository.findByUserIdOrderByIdDesc(userId);
     }

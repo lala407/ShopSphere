@@ -42,14 +42,52 @@ public class GlobalExceptionHandler {
      * <p>Referer 请求头记录"用户从哪个页面发来的请求"，
      * 出错了就把他送回去（带着错误提示），体验比停在错误页好。
      * 极少数情况没有 Referer（直接输 URL），退回首页兜底。
+     *
+     * <p>[P2-6] <b>Referer 是客户端可控的</b>，直接拼进 {@code redirect:} 就是开放重定向：
+     * 攻击者可构造 {@code Referer: https://evil.example/login}，让本站域名跳去钓鱼页。
+     * 这里只接受"以单个 / 开头的站内绝对路径"：
+     * <ul>
+     *   <li>拒绝 {@code //evil.com}（协议相对 URL，浏览器会当成外站）；</li>
+     *   <li>带协议的 URL 只保留 :// 之后的 path 部分，<b>主机名一律丢弃</b>——
+     *       所以 {@code https://evil.com/login} 会变成本站的 {@code /login}，跳不出站；</li>
+     *   <li>拒绝含换行/回车的值（响应头注入）；</li>
+     *   <li>其余情况回退首页，宁可少一点体验也不能被跳去外站。</li>
+     * </ul>
      */
     @ExceptionHandler(IllegalArgumentException.class)
     public String handleBusiness(IllegalArgumentException e,
                                  HttpServletRequest request,
                                  RedirectAttributes redirectAttributes) {
         redirectAttributes.addFlashAttribute("error", e.getMessage());
-        String referer = request.getHeader("Referer");
-        return "redirect:" + (referer != null ? referer : "/");
+        return "redirect:" + safeRedirectPath(request.getHeader("Referer"));
+    }
+
+    /**
+     * 把 Referer 收敛成安全的站内路径（P2-6）。
+     *
+     * <p>只保留 path + query，丢掉协议与主机——这样即使 Referer 是本站完整 URL
+     * （如 {@code http://localhost:8080/cart}）也能正确回去，而外站 URL 一律回首页。
+     */
+    private String safeRedirectPath(String referer) {
+        if (referer == null || referer.isBlank()) {
+            return "/";
+        }
+        // 换行/回车会截断响应头，直接拒绝
+        if (referer.indexOf('\n') >= 0 || referer.indexOf('\r') >= 0) {
+            return "/";
+        }
+        String path = referer;
+        int schemeEnd = path.indexOf("://");
+        if (schemeEnd > 0) {
+            // 有协议：取出 :// 之后的第一个 / 起的部分，并确认主机是本站
+            int pathStart = path.indexOf('/', schemeEnd + 3);
+            path = pathStart > 0 ? path.substring(pathStart) : "/";
+        }
+        // 协议相对（//evil.com）与非 / 开头的一律拒绝
+        if (!path.startsWith("/") || path.startsWith("//")) {
+            return "/";
+        }
+        return path;
     }
 
     /**

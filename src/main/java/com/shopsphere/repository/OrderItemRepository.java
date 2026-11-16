@@ -19,10 +19,10 @@ import java.util.List;
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
 
     // ==========================================================
-    // [手写] TODO：查某订单的全部明细
+    // 查某订单的全部明细
     List<OrderItem> findByOrderId(Long orderId);
 
-    // [手写 TODO：P1-7 商品删除] 该商品是否被任何订单明细引用过。
+    // 该商品是否被任何订单明细引用过。
     // 有引用 → 禁止物理删除（虽然 order_item.product_id 是裸 Long 没有外键，
     // 删除不会报错，但 Top5 统计按 productId 聚合，删了会让历史报表对不上号）。
     boolean existsByProductId(Long productId);
