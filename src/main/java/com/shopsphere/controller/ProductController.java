@@ -6,6 +6,7 @@
 // ============================================================
 package com.shopsphere.controller;
 
+import com.shopsphere.common.ProductStatus;
 import com.shopsphere.entity.Product;
 import com.shopsphere.repository.CategoryRepository;
 import com.shopsphere.repository.ProductRepository;
@@ -69,12 +70,18 @@ public class ProductController {
 
     /**
      * 商品详情：/product/5 → id=5
+     *
+     * <p>[AI辅助 P1-1 修复] 原来只判 id 是否存在，不判上下架状态——
+     * 已下架商品拿到旧链接仍能打开详情页（页面上加购按钮还在，加购才被
+     * CartService 拦截）。修复：非 ON_SALE 一律 404，与前台列表口径一致
+     * （列表走 searchOnSale，本来就不展示下架商品）。
      */
     @GetMapping("/product/{id}")
     public String detail(@PathVariable Long id, Model model) {
 
-        // 1. 查商品，查不到抛 404
+        // 1. 查商品：查不到、或已下架，都按"不存在"处理，抛 404
         Product product = productRepository.findById(id)
+                .filter(p -> p.getStatus() == ProductStatus.ON_SALE)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 
         // 2. 放进 model
