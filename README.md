@@ -120,6 +120,11 @@ docker compose logs -f app
 
 访问 http://服务器IP:8080
 
+> **生产配置说明（P2-4）**：`docker-compose.yml` 已给 app 容器注入 `SPRING_PROFILES_ACTIVE=prod`，
+> 生效的是 `src/main/resources/application-prod.yml`——模板缓存开、SQL 不回显、
+> 日志降到 INFO、`ddl-auto=validate`（表结构只校验不自动改，建表由 `db/schema.sql` 幂等执行）。
+> 本地开发不设该变量，仍用 `application.yml` 的便利配置（缓存关、SQL 回显、`ddl-auto=update`）。
+
 **验证数据持久化**（验收项）：
 
 ```bash

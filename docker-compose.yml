@@ -43,6 +43,9 @@ services:
     ports:
       - "8080:8080"
     environment:
+      # [P2-4] 生产 profile：模板缓存开、SQL 不回显、日志降噪、ddl-auto=validate（表结构只校验）
+      # 建表脚本为 classpath:db/schema.sql，启动时幂等执行
+      SPRING_PROFILES_ACTIVE: prod
       # 容器内通过服务名 mysql 访问数据库（Compose 内置 DNS）
       DB_URL: jdbc:mysql://mysql:3306/shopsphere?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&connectionCollation=utf8mb4_general_ci&createDatabaseIfNotExist=true
       DB_USERNAME: root

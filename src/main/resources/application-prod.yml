@@ -1,0 +1,54 @@
+# ============================================================
+# AI 辅助说明：本文件由 AI 辅助生成/修改
+# 生成内容：application-prod.yml —— 生产 profile 覆盖项（P2-4）
+# 人工修改：无
+# 审查状态：待人工审查
+# 启用方式：
+#   ① docker compose（已内置 SPRING_PROFILES_ACTIVE=prod）
+#   ② 手工运行：java -jar app.jar --spring.profiles.active=prod
+# 与开发配置的差别只有四件事：模板缓存、SQL 不回显、日志降噪、表结构只校验不自动改。
+# ============================================================
+
+spring:
+  # 1) 模板缓存：生产打开。开发关掉是为了改 HTML 不用重启，生产开着省掉每次请求的模板解析。
+  thymeleaf:
+    cache: true
+
+  jpa:
+    hibernate:
+      # 2) 表结构只校验（validate）：实体和库不一致时【启动即失败】，
+      #    而不是像 update 那样悄悄 ALTER 生产库（改错列类型/丢约束都可能发生）。
+      #    建表交给 db/schema.sql（由 Hibernate 导出的真实 DDL，见该文件头说明）。
+      ddl-auto: validate
+    # 3) 回显 SQL 关掉：show-sql 会把每条语句打到容器日志，量大且泄露表结构
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+    # 关键：置 false 让 schema.sql / data.sql 在 EntityManagerFactory 之前执行，
+    # 否则 validate 会先跑、表还不存在导致启动失败（开发 profile 里是 true，
+    # 因为那边靠 ddl-auto=update 建表，脚本必须排在 Hibernate 之后）。
+    defer-datasource-initialization: false
+
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
+      schema-locations: classpath:db/schema.sql   # 幂等建表（CREATE TABLE IF NOT EXISTS）
+      data-locations: classpath:data.sql          # 种子数据（INSERT IGNORE，重复执行安全）
+      continue-on-error: false
+
+# 4) 日志降噪：DEBUG 级 SQL + 业务日志在生产会写满磁盘
+logging:
+  level:
+    root: INFO
+    com.shopsphere: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+
+# 生产不把异常堆栈和内部消息吐给浏览器（信息泄露），只给一个通用错误页
+server:
+  error:
+    include-stacktrace: never
+    include-message: never
+    include-exception: false
